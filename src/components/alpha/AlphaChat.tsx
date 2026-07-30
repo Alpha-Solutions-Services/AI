@@ -270,7 +270,7 @@ export function AlphaChat() {
       >
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-2.5">
           <VoiceDock
-            disabled={busy}
+            disabled={busy || speaking}
             speakEnabled={speakEnabled}
             onSpeakEnabledChange={persistSpeak}
             onListeningChange={setListening}
@@ -279,6 +279,7 @@ export function AlphaChat() {
             onTranscript={(t) => {
               if (busyRef.current) return;
               const cleaned = cleanVoiceTranscript(t);
+              if (!cleaned) return;
               setText(cleaned);
               setInterim(cleaned);
               void send(cleaned);

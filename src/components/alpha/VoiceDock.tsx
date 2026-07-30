@@ -9,8 +9,10 @@ type SpeechRecognitionLike = {
   lang: string;
   start: () => void;
   stop: () => void;
+  abort?: () => void;
   onresult:
     | ((ev: {
+        resultIndex: number;
         results: {
           [i: number]: {
             [j: number]: { transcript: string };
@@ -35,6 +37,10 @@ function hasUrduScript(text: string) {
   return /[\u0600-\u06FF]/.test(text);
 }
 
+/**
+ * Live talk: mic stays on, speech auto-sends when you pause.
+ * Tap once to start live mode; tap again to stop. No tap-to-send.
+ */
 export function VoiceDock({
   disabled,
   speakEnabled,
@@ -43,7 +49,6 @@ export function VoiceDock({
   onInterim,
   onListeningChange,
   onLevel,
-  compact = false,
 }: {
   disabled?: boolean;
   speakEnabled: boolean;
@@ -52,38 +57,53 @@ export function VoiceDock({
   onInterim?: (text: string) => void;
   onListeningChange?: (listening: boolean) => void;
   onLevel?: (level: number) => void;
-  /** Smaller icon-only row for tight layouts */
-  compact?: boolean;
 }) {
-  const [listening, setListening] = useState(false);
+  const [live, setLive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
-  const mediaRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const [modeLabel, setModeLabel] = useState<"live" | "whisper" | null>(null);
+
+  const liveRef = useRef(false);
+  const disabledRef = useRef(!!disabled);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const lastSentRef = useRef("");
+  const lastSentAtRef = useRef(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const levelRafRef = useRef(0);
   const streamRef = useRef<MediaStream | null>(null);
-  const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mediaRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const whisperLoopRef = useRef(false);
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    disabledRef.current = !!disabled;
+  }, [disabled]);
 
   useEffect(() => {
     return () => {
+      liveRef.current = false;
+      whisperLoopRef.current = false;
+      recognitionRef.current?.abort?.();
       recognitionRef.current?.stop();
       if (mediaRef.current?.state === "recording") mediaRef.current.stop();
-      if (autoStopRef.current) clearTimeout(autoStopRef.current);
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
       stopLevelMeter();
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
 
-  function setListenState(v: boolean) {
-    setListening(v);
+  function setLiveState(v: boolean) {
+    liveRef.current = v;
+    setLive(v);
     onListeningChange?.(v);
     if (!v) {
       onInterim?.("");
       onLevel?.(0);
+      setModeLabel(null);
     }
   }
 
@@ -95,12 +115,15 @@ export function VoiceDock({
     audioCtxRef.current = null;
   }
 
-  function startLevelMeter(stream: MediaStream) {
+  function startLevelMeter(
+    stream: MediaStream,
+    onLoud?: (loud: boolean) => void
+  ) {
     try {
       const ctx = new AudioContext();
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
+      analyser.fftSize = 512;
       source.connect(analyser);
       audioCtxRef.current = ctx;
       analyserRef.current = analyser;
@@ -110,55 +133,99 @@ export function VoiceDock({
         let sum = 0;
         for (let i = 0; i < data.length; i++) sum += data[i];
         const avg = sum / data.length / 255;
-        onLevel?.(Math.min(1, avg * 2.2));
+        onLevel?.(Math.min(1, avg * 2.4));
+        onLoud?.(avg > 0.045);
         levelRafRef.current = requestAnimationFrame(tick);
       };
       tick();
     } catch {
-      /* analyser optional */
+      /* optional */
     }
   }
 
   function emitTranscript(text: string) {
     const cleaned = text.trim();
-    if (!cleaned) return;
-    if (cleaned === lastSentRef.current) return;
+    if (!cleaned || cleaned.length < 2) return;
+    const now = Date.now();
+    if (cleaned === lastSentRef.current && now - lastSentAtRef.current < 4000) {
+      return;
+    }
     lastSentRef.current = cleaned;
+    lastSentAtRef.current = now;
     onTranscript(cleaned);
   }
 
-  async function startBrowserSpeech() {
+  function stopAllCapture() {
+    whisperLoopRef.current = false;
+    recognitionRef.current?.abort?.();
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    if (mediaRef.current?.state === "recording") {
+      try {
+        mediaRef.current.stop();
+      } catch {
+        /* ignore */
+      }
+    }
+    mediaRef.current = null;
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+    stopLevelMeter();
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  }
+
+  async function startLiveBrowserSpeech() {
     const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Ctor) return false;
+
     const recognition = new Ctor();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
+
     recognition.onresult = (ev) => {
+      if (disabledRef.current) return;
       let interim = "";
-      let finalText = "";
-      for (let i = 0; i < ev.results.length; i++) {
+      let finalPiece = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
         const row = ev.results[i];
         const piece = row?.[0]?.transcript || "";
-        if (row?.isFinal) finalText += piece;
+        if (row?.isFinal) finalPiece += piece;
         else interim += piece;
       }
       if (interim) onInterim?.(interim);
-      if (finalText.trim()) {
-        onInterim?.(finalText.trim());
-        emitTranscript(finalText.trim());
+      if (finalPiece.trim()) {
+        onInterim?.(finalPiece.trim());
+        emitTranscript(finalPiece.trim());
       }
     };
-    recognition.onerror = () => {
-      setListenState(false);
-      stopLevelMeter();
+
+    recognition.onerror = (ev) => {
+      const err = ev?.error || "";
+      if (err === "aborted" || err === "no-speech") return;
+      if (err === "not-allowed") {
+        setMicError("Microphone blocked — allow mic in browser settings");
+        setLiveState(false);
+        stopAllCapture();
+      }
     };
+
     recognition.onend = () => {
-      setListenState(false);
-      stopLevelMeter();
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
+      // Keep live session alive until user turns it off
+      if (liveRef.current) {
+        if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+        restartTimerRef.current = setTimeout(() => {
+          if (!liveRef.current) return;
+          try {
+            recognition.start();
+          } catch {
+            /* already started */
+          }
+        }, disabledRef.current ? 900 : 280);
+      }
     };
+
     recognitionRef.current = recognition;
 
     try {
@@ -166,145 +233,155 @@ export function VoiceDock({
       streamRef.current = stream;
       startLevelMeter(stream);
     } catch {
-      /* mic meter optional */
+      /* meter optional */
     }
 
     recognition.start();
-    setListenState(true);
+    setModeLabel("live");
+    setLiveState(true);
+    setMicError(null);
+    onInterim?.("Live talk on — just speak");
     return true;
   }
 
-  async function startWhisperCapture() {
+  async function startWhisperLiveLoop() {
+    whisperLoopRef.current = true;
+    setModeLabel("whisper");
+    setLiveState(true);
+    setMicError(null);
+    onInterim?.("Live talk on — speak, pause to send");
+
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     streamRef.current = stream;
-    startLevelMeter(stream);
-    onInterim?.("Listening… speak now");
-    const recorder = new MediaRecorder(stream);
-    chunksRef.current = [];
-    recorder.ondataavailable = (e) => {
-      if (e.data.size) chunksRef.current.push(e.data);
-    };
-    recorder.onstop = () => {
-      void (async () => {
-        if (autoStopRef.current) {
-          clearTimeout(autoStopRef.current);
-          autoStopRef.current = null;
+
+    const runSegment = () => {
+      if (!whisperLoopRef.current || !liveRef.current) return;
+
+      chunksRef.current = [];
+      let heardSpeech = false;
+      let recording = true;
+
+      const recorder = new MediaRecorder(stream);
+      mediaRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size) chunksRef.current.push(e.data);
+      };
+
+      const finishSegment = () => {
+        if (!recording) return;
+        recording = false;
+        if (silenceTimerRef.current) {
+          clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = null;
         }
-        setUploading(true);
-        stopLevelMeter();
-        onInterim?.("Transcribing…");
         try {
-          const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-          if (blob.size < 800) {
-            onInterim?.("");
-            setMicError("No speech captured — tap Voice and try again");
-            return;
-          }
-          const form = new FormData();
-          form.append("audio", blob, "alpha.webm");
-          const res = await fetch("/api/voice/transcribe", {
-            method: "POST",
-            body: form,
-          });
-          const raw = await res.text();
-          let json: { text?: string; error?: string } = {};
-          try {
-            json = raw ? JSON.parse(raw) : {};
-          } catch {
-            /* ignore */
-          }
-          if (res.ok && json.text) {
-            setMicError(null);
-            onInterim?.(String(json.text));
-            emitTranscript(String(json.text));
-          } else {
-            setMicError(json.error || "Transcription failed");
-          }
-        } finally {
-          setUploading(false);
-          stream.getTracks().forEach((t) => t.stop());
-          streamRef.current = null;
-          setListenState(false);
+          if (recorder.state === "recording") recorder.stop();
+        } catch {
+          /* ignore */
         }
-      })();
+      };
+
+      startLevelMeter(stream, (loud) => {
+        if (!recording || !whisperLoopRef.current) return;
+        if (loud) {
+          heardSpeech = true;
+          if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = setTimeout(() => {
+            if (heardSpeech) finishSegment();
+          }, 1100);
+        }
+      });
+
+      // Max segment length
+      const maxTimer = setTimeout(() => {
+        if (heardSpeech) finishSegment();
+        else if (whisperLoopRef.current && liveRef.current) {
+          // restart quiet segment
+          finishSegment();
+        }
+      }, 10000);
+
+      recorder.onstop = () => {
+        clearTimeout(maxTimer);
+        void (async () => {
+          if (!whisperLoopRef.current) return;
+          const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+          if (blob.size > 1200 && heardSpeech && !disabledRef.current) {
+            setUploading(true);
+            onInterim?.("Transcribing…");
+            try {
+              const form = new FormData();
+              form.append("audio", blob, "alpha.webm");
+              const res = await fetch("/api/voice/transcribe", {
+                method: "POST",
+                body: form,
+              });
+              const raw = await res.text();
+              let json: { text?: string; error?: string } = {};
+              try {
+                json = raw ? JSON.parse(raw) : {};
+              } catch {
+                /* ignore */
+              }
+              if (res.ok && json.text) {
+                onInterim?.(String(json.text));
+                emitTranscript(String(json.text));
+              }
+            } finally {
+              setUploading(false);
+            }
+          }
+          // Continue live loop
+          if (whisperLoopRef.current && liveRef.current) {
+            setTimeout(runSegment, disabledRef.current ? 800 : 200);
+          }
+        })();
+      };
+
+      try {
+        recorder.start();
+      } catch {
+        setMicError("Could not start live recording");
+        setLiveState(false);
+        stopAllCapture();
+      }
     };
-    mediaRef.current = recorder;
-    recorder.start();
-    setListenState(true);
-    setMicError(null);
-    // Auto-stop after 12s so users aren't stuck recording forever
-    autoStopRef.current = setTimeout(() => {
-      if (mediaRef.current?.state === "recording") mediaRef.current.stop();
-    }, 12000);
+
+    runSegment();
   }
 
-  async function toggleListen() {
-    if (listening) {
-      recognitionRef.current?.stop();
-      if (mediaRef.current?.state === "recording") mediaRef.current.stop();
-      stopLevelMeter();
-      setListenState(false);
+  async function toggleLive() {
+    if (live) {
+      setLiveState(false);
+      stopAllCapture();
+      onInterim?.("");
       return;
     }
-    if (disabled || uploading) return;
+    if (disabled) return;
     setMicError(null);
-    if (typeof MediaRecorder !== "undefined") {
-      try {
-        await startWhisperCapture();
+
+    // Prefer continuous browser speech (true live, auto-send on pause)
+    try {
+      const ok = await startLiveBrowserSpeech();
+      if (ok) return;
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "NotAllowedError") {
+        setMicError("Microphone blocked — allow mic in browser settings");
         return;
-      } catch (err) {
-        const msg =
-          err instanceof DOMException && err.name === "NotAllowedError"
-            ? "Microphone blocked — allow mic in browser settings"
-            : "Could not open microphone";
-        setMicError(msg);
       }
     }
-    try {
-      const ok = await startBrowserSpeech();
-      if (!ok) setMicError("Voice not supported in this browser");
-    } catch {
-      setMicError("Could not start voice recognition");
-    }
-  }
 
-  if (compact) {
-    return (
-      <div className="flex flex-col items-start gap-1">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled={disabled || uploading}
-            onClick={() => void toggleListen()}
-            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center border ${
-              listening
-                ? "border-[var(--color-accent)] bg-[var(--color-accent-dim)] text-[var(--color-accent)]"
-                : "border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]"
-            } disabled:opacity-40`}
-            title={listening ? "Stop & send" : "Voice (EN / اردو)"}
-            aria-label={listening ? "Stop listening" : "Start voice"}
-          >
-            {listening ? <MicOff size={18} /> : <Mic size={18} />}
-          </button>
-          <button
-            type="button"
-            onClick={() => onSpeakEnabledChange(!speakEnabled)}
-            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center border border-[var(--color-border)] ${
-              speakEnabled
-                ? "text-[var(--color-accent)]"
-                : "text-[var(--color-muted)]"
-            }`}
-            title={speakEnabled ? "Mute Alpha voice" : "Enable spoken replies"}
-            aria-label="Toggle spoken replies"
-          >
-            {speakEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-          </button>
-        </div>
-        {micError ? (
-          <p className="max-w-[12rem] text-[10px] text-red-400">{micError}</p>
-        ) : null}
-      </div>
-    );
+    // Fallback: Whisper segments with silence auto-send
+    try {
+      await startWhisperLiveLoop();
+    } catch (err) {
+      const msg =
+        err instanceof DOMException && err.name === "NotAllowedError"
+          ? "Microphone blocked — allow mic in browser settings"
+          : "Could not start live talk";
+      setMicError(msg);
+      setLiveState(false);
+    }
   }
 
   return (
@@ -312,23 +389,17 @@ export function VoiceDock({
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          disabled={disabled || uploading}
-          onClick={() => void toggleListen()}
-          className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2.5 border px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] transition sm:flex-none sm:min-w-[11rem] ${
-            listening
-              ? "border-[var(--color-accent)] bg-[var(--color-accent)]/20 text-[var(--color-accent-2)] shadow-[0_0_20px_rgba(0,191,255,0.35)]"
-              : "border-[var(--color-accent)]/45 bg-[var(--color-accent-dim)] text-[var(--color-accent-2)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)]/15"
+          disabled={(!live && disabled) || uploading}
+          onClick={() => void toggleLive()}
+          className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2.5 border px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] transition sm:flex-none sm:min-w-[12.5rem] ${
+            live
+              ? "border-emerald-400/60 bg-emerald-400/15 text-emerald-300 shadow-[0_0_22px_rgba(52,211,153,0.35)]"
+              : "border-[var(--color-accent)]/45 bg-[var(--color-accent-dim)] text-[var(--color-accent-2)] hover:border-[var(--color-accent)]"
           } disabled:opacity-40`}
-          aria-pressed={listening}
+          aria-pressed={live}
         >
-          {listening ? <MicOff size={20} /> : <Mic size={20} />}
-          <span>
-            {uploading
-              ? "Transcribing…"
-              : listening
-                ? "Tap to send"
-                : "Voice"}
-          </span>
+          {live ? <MicOff size={20} /> : <Mic size={20} />}
+          <span>{live ? "Live · On" : "Live Talk"}</span>
         </button>
 
         <button
@@ -349,12 +420,19 @@ export function VoiceDock({
 
         <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)]">
           EN · اردو
+          {modeLabel === "live"
+            ? " · auto-send"
+            : modeLabel === "whisper"
+              ? " · pause to send"
+              : ""}
         </span>
       </div>
 
-      {listening ? (
-        <p className="text-[11px] text-[var(--color-accent-2)]">
-          Listening — speak, then tap again to send (auto-stops at 12s)
+      {live ? (
+        <p className="text-[11px] text-emerald-300/90">
+          {uploading
+            ? "Transcribing…"
+            : "Listening live — speak naturally; Alpha sends when you pause. Tap Live again to stop."}
         </p>
       ) : null}
       {micError ? <p className="text-[11px] text-red-400">{micError}</p> : null}

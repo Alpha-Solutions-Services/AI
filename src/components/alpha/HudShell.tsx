@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   BarChart3,
@@ -80,7 +80,8 @@ function MetricRing({
 }) {
   const r = 18;
   const c = 2 * Math.PI * r;
-  const offset = c - (value / 100) * c;
+  const clamped = Math.max(0, Math.min(100, value));
+  const offset = c - (clamped / 100) * c;
   const stroke = gold ? "var(--color-gold)" : "var(--color-accent)";
   return (
     <div className="flex flex-col items-center gap-1">
@@ -103,18 +104,81 @@ function MetricRing({
           strokeDasharray={c}
           strokeDashoffset={offset}
           strokeLinecap="round"
+          className="transition-[stroke-dashoffset] duration-700 ease-out"
           style={{ filter: `drop-shadow(0 0 4px ${stroke})` }}
         />
       </svg>
       <p className="text-[10px] uppercase tracking-wider text-[var(--color-muted)]">
         {label}
       </p>
-      <p className="font-mono text-xs text-[var(--color-text)]">{value}%</p>
+      <p className="font-mono text-xs tabular-nums text-[var(--color-text)]">
+        {Math.round(clamped)}%
+      </p>
     </div>
   );
 }
 
+function useLiveMetrics() {
+  const [cpu, setCpu] = useState(24);
+  const [mem, setMem] = useState(42);
+  const [net, setNet] = useState(71);
+  const [tasks, setTasks] = useState(1287);
+  const [success, setSuccess] = useState(98.6);
+  const [latency, setLatency] = useState(0.83);
+  const [trend, setTrend] = useState<number[]>(() =>
+    Array.from({ length: 24 }, () => 18 + Math.random() * 14)
+  );
+  const [procPulse, setProcPulse] = useState(0);
+  const [docs, setDocs] = useState<number | null>(null);
+  const [uptime, setUptime] = useState("00:00:00");
+  const startRef = useRef(Date.now());
+
+  useEffect(() => {
+    const tick = setInterval(() => {
+      setCpu((v) => Math.max(12, Math.min(68, v + (Math.random() - 0.48) * 6)));
+      setMem((v) => Math.max(28, Math.min(78, v + (Math.random() - 0.5) * 4)));
+      setNet((v) => Math.max(40, Math.min(96, v + (Math.random() - 0.45) * 8)));
+      setLatency((v) =>
+        Math.max(0.42, Math.min(1.6, +(v + (Math.random() - 0.5) * 0.12).toFixed(2)))
+      );
+      setSuccess((v) =>
+        Math.max(97.2, Math.min(99.4, +(v + (Math.random() - 0.5) * 0.08).toFixed(1)))
+      );
+      if (Math.random() > 0.7) setTasks((t) => t + 1);
+      setTrend((arr) => [...arr.slice(1), 12 + Math.random() * 22]);
+      setProcPulse((p) => p + 1);
+      const elapsed = Math.floor((Date.now() - startRef.current) / 1000);
+      const hh = String(Math.floor(elapsed / 3600)).padStart(2, "0");
+      const mm = String(Math.floor((elapsed % 3600) / 60)).padStart(2, "0");
+      const ss = String(elapsed % 60).padStart(2, "0");
+      setUptime(`${hh}:${mm}:${ss}`);
+    }, 1600);
+    return () => clearInterval(tick);
+  }, []);
+
+  useEffect(() => {
+    void fetch("/api/knowledge/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j && typeof j.documents === "number") setDocs(j.documents);
+      })
+      .catch(() => undefined);
+    const id = setInterval(() => {
+      void fetch("/api/knowledge/status")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          if (j && typeof j.documents === "number") setDocs(j.documents);
+        })
+        .catch(() => undefined);
+    }, 45000);
+    return () => clearInterval(id);
+  }, []);
+
+  return { cpu, mem, net, tasks, success, latency, trend, procPulse, docs, uptime };
+}
+
 export function LeftHudPanel() {
+  const { cpu, mem, net, procPulse, docs, uptime } = useLiveMetrics();
   const caps = [
     { icon: Brain, title: "Intelligent", blurb: "Deep analysis & planning" },
     { icon: ListTodo, title: "Plans smarter", blurb: "Breaks work into steps" },
@@ -122,26 +186,34 @@ export function LeftHudPanel() {
     { icon: Puzzle, title: "Adapts & learns", blurb: "Context from your stack" },
   ];
   const procs = [
-    "Portal CRM sync",
-    "TMS freight queue",
-    "Learn Dispatch academy",
-    "Knowledge crawl",
-    "Web intelligence",
+    { name: "Portal CRM sync", lag: 0 },
+    { name: "TMS freight queue", lag: 1 },
+    { name: "Learn Dispatch academy", lag: 2 },
+    { name: "Knowledge crawl", lag: 3 },
+    { name: "Web intelligence", lag: 4 },
   ];
 
   return (
-    <aside className="hud-glass flex h-full flex-col gap-4 overflow-y-auto p-4">
+    <aside className="hud-glass flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-3 sm:p-4">
+      <div className="flex items-center justify-between">
+        <p className="hud-panel-title">Live systems</p>
+        <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider text-emerald-400">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+          Live
+        </span>
+      </div>
+
       <div>
         <p className="hud-panel-title mb-3">AI Capabilities</p>
         <ul className="space-y-2.5">
-          {caps.map((c) => (
-            <li key={c.title} className="flex gap-3">
+          {caps.map((cap) => (
+            <li key={cap.title} className="flex gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--color-border)] bg-[var(--color-accent-dim)] text-[var(--color-accent)]">
-                <c.icon size={16} />
+                <cap.icon size={16} />
               </div>
               <div>
-                <p className="text-sm text-[var(--color-text)]">{c.title}</p>
-                <p className="text-[11px] text-[var(--color-muted)]">{c.blurb}</p>
+                <p className="text-sm text-[var(--color-text)]">{cap.title}</p>
+                <p className="text-[11px] text-[var(--color-muted)]">{cap.blurb}</p>
               </div>
             </li>
           ))}
@@ -151,27 +223,44 @@ export function LeftHudPanel() {
       <div>
         <p className="hud-panel-title mb-3">System Metrics</p>
         <div className="flex justify-between gap-1 px-1">
-          <MetricRing label="CPU" value={23} />
-          <MetricRing label="Memory" value={45} />
-          <MetricRing label="Network" value={78} gold />
+          <MetricRing label="CPU" value={cpu} />
+          <MetricRing label="Memory" value={mem} />
+          <MetricRing label="Network" value={net} gold />
         </div>
+        <p className="mt-2 font-mono text-[10px] text-[var(--color-muted)]">
+          Session uptime {uptime}
+          {docs != null ? ` · ${docs} docs indexed` : ""}
+        </p>
       </div>
 
       <div>
         <p className="hud-panel-title mb-3">Active Processes</p>
         <ul className="space-y-2">
-          {procs.map((p) => (
-            <li
-              key={p}
-              className="flex items-center gap-2 border border-[var(--color-border)]/60 bg-black/20 px-2.5 py-2 text-[11px] text-[var(--color-chrome)]"
-            >
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-              <span className="truncate">{p}</span>
-              <span className="ml-auto text-[9px] uppercase tracking-wider text-emerald-400/90">
-                Running
-              </span>
-            </li>
-          ))}
+          {procs.map((p) => {
+            const active = (procPulse + p.lag) % 5 !== 0;
+            return (
+              <li
+                key={p.name}
+                className="flex items-center gap-2 border border-[var(--color-border)]/60 bg-black/20 px-2.5 py-2 text-[11px] text-[var(--color-chrome)]"
+              >
+                <span
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                    active
+                      ? "bg-emerald-400 shadow-[0_0_8px_#34d399]"
+                      : "bg-[var(--color-gold)] shadow-[0_0_8px_#ffd54f]"
+                  }`}
+                />
+                <span className="truncate">{p.name}</span>
+                <span
+                  className={`ml-auto text-[9px] uppercase tracking-wider ${
+                    active ? "text-emerald-400/90" : "text-[var(--color-gold)]"
+                  }`}
+                >
+                  {active ? "Running" : "Sync"}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </aside>
@@ -179,6 +268,7 @@ export function LeftHudPanel() {
 }
 
 export function RightHudPanel() {
+  const { tasks, success, latency, trend } = useLiveMetrics();
   const directives = [
     { icon: Shield, label: "Secure by default" },
     { icon: Briefcase, label: "Business focused" },
@@ -186,8 +276,25 @@ export function RightHudPanel() {
     { icon: Star, label: "Communicate clearly" },
   ];
 
+  const points = trend
+    .map((y, i) => {
+      const x = (i / (trend.length - 1)) * 120;
+      const py = 36 - y;
+      return `${x},${py}`;
+    })
+    .join(" ");
+  const area = `0,40 ${points} 120,40`;
+
   return (
-    <aside className="hud-glass flex h-full flex-col gap-4 overflow-y-auto p-4">
+    <aside className="hud-glass flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-3 sm:p-4">
+      <div className="flex items-center justify-between">
+        <p className="hud-panel-title">Mission feed</p>
+        <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider text-emerald-400">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+          Online
+        </span>
+      </div>
+
       <div>
         <p className="hud-panel-title mb-2">Mission Objective</p>
         <p className="text-[12px] leading-relaxed text-[var(--color-chrome)]">
@@ -218,15 +325,15 @@ export function RightHudPanel() {
         <p className="hud-panel-title mb-3">AI Agent Status</p>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { k: "Tasks", v: "1.2k" },
-            { k: "Success", v: "98.6%" },
-            { k: "Latency", v: "0.83s" },
+            { k: "Tasks", v: tasks.toLocaleString() },
+            { k: "Success", v: `${success.toFixed(1)}%` },
+            { k: "Latency", v: `${latency.toFixed(2)}s` },
           ].map((s) => (
             <div
               key={s.k}
               className="border border-[var(--color-border)] bg-black/25 px-2 py-2 text-center"
             >
-              <p className="font-mono text-sm text-[var(--color-text)] sm:text-base">
+              <p className="font-mono text-sm tabular-nums text-[var(--color-text)] sm:text-base">
                 {s.v}
               </p>
               <p className="mt-0.5 text-[9px] uppercase tracking-wider text-[var(--color-muted)]">
@@ -238,7 +345,7 @@ export function RightHudPanel() {
         <div className="mt-2 grid grid-cols-1 gap-2">
           {[
             { k: "Ops ready", v: "Online", icon: Activity },
-            { k: "Voice", v: "EN · اردو", icon: MessageSquare },
+            { k: "Voice", v: "Live talk", icon: MessageSquare },
             { k: "Write gate", v: "Confirm", icon: CheckCircle2 },
           ].map((s) => (
             <div
@@ -265,15 +372,11 @@ export function RightHudPanel() {
             fill="none"
             stroke="currentColor"
             strokeWidth="1.5"
-            points="0,28 12,22 24,26 36,14 48,18 60,10 72,16 84,8 96,12 108,6 120,10"
-            opacity="0.85"
+            points={points}
+            opacity="0.9"
+            className="transition-all duration-500"
           />
-          <polyline
-            fill="url(#alphaTrend)"
-            stroke="none"
-            points="0,40 0,28 12,22 24,26 36,14 48,18 60,10 72,16 84,8 96,12 108,6 120,10 120,40"
-            opacity="0.2"
-          />
+          <polyline fill="url(#alphaTrend)" stroke="none" points={area} opacity="0.2" />
           <defs>
             <linearGradient id="alphaTrend" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#00BFFF" />
@@ -397,9 +500,9 @@ export function HudShell({
       {/* Body */}
       <div
         className={clsx(
-          "relative z-10 mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-3 pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-3",
+          "relative z-10 mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-2 overflow-hidden p-2 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:gap-3 sm:p-3 lg:pb-3",
           !centerOnly &&
-            "lg:grid lg:grid-cols-[240px_minmax(0,1fr)_240px] xl:grid-cols-[280px_minmax(0,1fr)_280px]"
+            "lg:grid lg:grid-cols-[220px_minmax(0,1fr)_220px] xl:grid-cols-[260px_minmax(0,1fr)_260px] 2xl:grid-cols-[280px_minmax(0,1fr)_280px]"
         )}
       >
         {!centerOnly ? (
