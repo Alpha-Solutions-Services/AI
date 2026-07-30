@@ -126,9 +126,7 @@ export function AlphaChat() {
             : `Chat failed (${res.status || "network"}). Try again.`
         );
       }
-      if (!res.ok) {
-        throw new Error(json.error || `Chat failed (${res.status})`);
-      }
+      if (!res.ok) throw new Error(json.error || `Chat failed (${res.status})`);
 
       setConversationId(json.conversationId || null);
       const reply = String(json.reply || "");
@@ -163,113 +161,114 @@ export function AlphaChat() {
   const showHeroOrb = messages.length === 0 || listening || speaking || busy;
 
   return (
-    <div className="relative mx-auto flex h-full min-h-0 w-full max-w-3xl flex-1 flex-col px-4 pt-4 md:max-w-4xl md:px-6 md:pt-6">
-      {/* Centered agent orb */}
-      {showHeroOrb ? (
-        <div className="mb-3 flex flex-col items-center justify-center">
-          <SpeakingOrb mode={mode} level={level} />
-          <p className="mt-2 text-center text-[10px] font-medium uppercase tracking-[0.28em] text-[var(--color-chrome)]/80">
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-4">
+        <div
+          className={`mb-2 flex flex-col items-center justify-center ${
+            showHeroOrb ? "" : "scale-90"
+          }`}
+        >
+          <div className={showHeroOrb ? "w-full max-w-[360px]" : "w-[140px] sm:w-[170px]"}>
+            <SpeakingOrb mode={mode} level={level} />
+          </div>
+          <p className="mt-1 text-center text-[9px] font-semibold uppercase tracking-[0.32em] text-[var(--color-accent-2)]/80">
             {mode === "listening"
               ? "Listening · سن رہا ہے"
               : mode === "speaking"
                 ? "Speaking · بول رہا ہے"
                 : mode === "thinking"
                   ? "Thinking · سوچ رہا ہے"
-                  : "Alpha · تیار"}
+                  : "Holographic core · online"}
           </p>
           {(listening || interim) && (
             <p
-              className="mt-3 max-w-md rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]/60 px-4 py-2 text-center text-sm text-[var(--color-text)]/90 backdrop-blur-sm"
+              className="mt-2 max-w-lg border border-[var(--color-border)] bg-black/30 px-4 py-2 text-center text-sm text-[var(--color-accent-2)] backdrop-blur-sm"
               dir="auto"
             >
               {interim || "…"}
             </p>
           )}
         </div>
-      ) : (
-        <div className="mb-2 flex justify-center md:mb-3">
-          <div className="w-[132px] md:w-[168px]">
-            <SpeakingOrb mode={mode} level={level} />
-          </div>
+
+        <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pb-2">
+          {messages.length === 0 && !listening ? (
+            <div className="mx-auto grid max-w-2xl grid-cols-1 gap-2 sm:grid-cols-2">
+              {SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => void send(s)}
+                  dir="auto"
+                  className="border border-[var(--color-border)] bg-black/25 px-3 py-3 text-left text-[13px] text-[var(--color-chrome)] transition hover:border-[var(--color-border-glow)] hover:bg-[var(--color-accent-dim)]"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {messages.map((m) => (
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              dir="auto"
+              className={`mx-auto max-w-2xl whitespace-pre-wrap px-3.5 py-2.5 text-[14px] leading-relaxed ${
+                m.role === "user"
+                  ? "ml-auto border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/10 text-[var(--color-text)]"
+                  : m.role === "assistant"
+                    ? "mr-auto border border-[var(--color-border)] bg-black/35 text-[var(--color-text)]"
+                    : "text-[var(--color-muted)]"
+              }`}
+            >
+              {m.content}
+            </motion.div>
+          ))}
+
+          {pending.map((p) => (
+            <div key={p.runId} className="mx-auto max-w-2xl">
+              <ConfirmCard
+                item={p}
+                onDone={(runId, status, result) => {
+                  setPending((list) => list.filter((x) => x.runId !== runId));
+                  setMessages((m) => [
+                    ...m,
+                    {
+                      id: `t-${runId}`,
+                      role: "assistant",
+                      content:
+                        status === "cancelled"
+                          ? `Cancelled ${p.toolName}.`
+                          : `Executed ${p.toolName}: ${
+                              (result as { summary?: string })?.summary ||
+                              status
+                            }`,
+                    },
+                  ]);
+                }}
+              />
+            </div>
+          ))}
+
+          {busy ? (
+            <div className="inline-flex items-center gap-2 px-1 text-sm text-[var(--color-muted)]">
+              <Loader2 className="animate-spin" size={16} /> Processing…
+            </div>
+          ) : null}
+          <div ref={bottomRef} />
         </div>
-      )}
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-2">
-        {messages.length === 0 && !listening ? (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => void send(s)}
-                dir="auto"
-                className="border border-white/[0.06] bg-white/[0.03] px-4 py-3.5 text-left text-sm text-[var(--color-chrome)] transition hover:border-[var(--color-border-glow)] hover:bg-white/[0.05]"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        ) : null}
-
-        {messages.map((m) => (
-          <motion.div
-            key={m.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            dir="auto"
-            className={`max-w-[92%] whitespace-pre-wrap px-4 py-3 text-[15px] leading-relaxed md:max-w-[82%] ${
-              m.role === "user"
-                ? "ml-auto border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/12 text-[var(--color-text)]"
-                : m.role === "assistant"
-                  ? "border border-white/[0.06] bg-[var(--color-surface)]/80 text-[var(--color-text)]"
-                  : "text-[var(--color-muted)]"
-            }`}
-          >
-            {m.content}
-          </motion.div>
-        ))}
-
-        {pending.map((p) => (
-          <ConfirmCard
-            key={p.runId}
-            item={p}
-            onDone={(runId, status, result) => {
-              setPending((list) => list.filter((x) => x.runId !== runId));
-              setMessages((m) => [
-                ...m,
-                {
-                  id: `t-${runId}`,
-                  role: "assistant",
-                  content:
-                    status === "cancelled"
-                      ? `Cancelled ${p.toolName}.`
-                      : `Executed ${p.toolName}: ${
-                          (result as { summary?: string })?.summary || status
-                        }`,
-                },
-              ]);
-            }}
-          />
-        ))}
-
-        {busy ? (
-          <div className="inline-flex items-center gap-2 text-sm text-[var(--color-muted)]">
-            <Loader2 className="animate-spin" size={16} /> Thinking…
-          </div>
-        ) : null}
-        <div ref={bottomRef} />
+        {error ? <p className="mb-2 text-sm text-red-400">{error}</p> : null}
       </div>
 
-      {error ? <p className="mb-2 text-sm text-red-400">{error}</p> : null}
-
       <form
-        className="sticky bottom-0 z-20 -mx-4 mt-auto border-t border-[var(--color-border)] bg-[var(--color-bg)]/95 px-4 py-3 backdrop-blur-md md:static md:mx-0 md:mt-3 md:border md:border-[var(--color-border)] md:bg-[var(--color-surface)]/70 md:px-2 md:py-2 md:backdrop-blur-none"
+        className="mt-auto border-t border-[var(--color-border)] bg-black/40 px-3 py-3 backdrop-blur-md"
         onSubmit={(e) => {
           e.preventDefault();
           void send(text);
         }}
       >
-        <div className="flex items-end gap-2">
+        <div className="mx-auto flex max-w-2xl items-end gap-2">
           <VoiceDock
             disabled={busy}
             speakEnabled={speakEnabled}
@@ -290,8 +289,8 @@ export function AlphaChat() {
             onChange={(e) => setText(e.target.value)}
             rows={2}
             dir="auto"
-            placeholder="English or اردو — ask Alpha…"
-            className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] md:bg-transparent md:px-2"
+            placeholder="Ask Alpha AI Agent anything…"
+            className="max-h-28 min-h-[44px] flex-1 resize-none border border-[var(--color-border)] bg-[#050a12]/70 px-3 py-2.5 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)]/50"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -302,14 +301,11 @@ export function AlphaChat() {
           <button
             type="submit"
             disabled={busy || !text.trim()}
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-accent)] text-[#05080f] disabled:opacity-40"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center border border-[var(--color-accent)]/50 bg-[var(--color-accent)] text-[#050a12] shadow-[var(--glow-sm)] disabled:opacity-40"
           >
             <Send size={16} />
           </button>
         </div>
-        <p className="mt-2 text-[10px] text-[var(--color-muted)] md:text-[11px]">
-          Mic: English + اردو · particles form A · confirm before writes
-        </p>
       </form>
     </div>
   );

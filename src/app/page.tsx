@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { AlphaChat } from "@/components/alpha/AlphaChat";
+import { DashboardHome } from "@/components/alpha/DashboardHome";
 import { AppShell } from "@/components/alpha/AppShell";
 import { isAlphaStaff } from "@/lib/staff/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -19,8 +19,8 @@ export default async function HomePage() {
   }
 
   return (
-    <AppShell email={user.email}>
-      <AlphaChat />
+    <AppShell email={user.email} centerOnly={false}>
+      <DashboardHome />
     </AppShell>
   );
 }

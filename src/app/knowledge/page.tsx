@@ -57,10 +57,10 @@ export default function KnowledgePage() {
   }
 
   return (
-    <AppShell email={email}>
-      <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-6">
+    <AppShell email={email} centerOnly>
+      <div className="mx-auto w-full max-w-3xl overflow-y-auto px-4 py-6 md:px-6">
         <h1
-          className="text-3xl text-[var(--color-text)]"
+          className="text-2xl uppercase tracking-[0.16em] text-[var(--color-accent-2)]"
           style={{ fontFamily: "var(--font-display), sans-serif" }}
         >
           Knowledge

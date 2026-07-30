@@ -3,21 +3,22 @@
 @tailwind utilities;
 
 :root {
-  --color-bg: #05080f;
-  --color-surface: #0c1422;
-  --color-surface-2: #101a2c;
-  --color-border: rgba(143, 180, 212, 0.1);
-  --color-border-glow: rgba(91, 200, 255, 0.28);
-  --color-accent: #4aa8ff;
-  --color-accent-2: #8fd0ff;
-  --color-accent-dim: rgba(74, 168, 255, 0.1);
-  --color-accent-glow: rgba(74, 168, 255, 0.2);
-  --color-chrome: #9bb8d4;
-  --color-text: #eef3f8;
-  --color-muted: #6f8eab;
-  --glow-sm: 0 0 16px rgba(74, 168, 255, 0.22);
-  --glow-md: 0 0 40px rgba(74, 168, 255, 0.16),
-    0 0 80px rgba(74, 168, 255, 0.06);
+  --color-bg: #050a12;
+  --color-surface: rgba(8, 18, 32, 0.72);
+  --color-surface-2: rgba(12, 28, 48, 0.85);
+  --color-border: rgba(0, 191, 255, 0.18);
+  --color-border-glow: rgba(0, 191, 255, 0.45);
+  --color-accent: #00bfff;
+  --color-accent-2: #4fc3f7;
+  --color-accent-dim: rgba(0, 191, 255, 0.12);
+  --color-accent-glow: rgba(0, 191, 255, 0.35);
+  --color-gold: #ffd54f;
+  --color-gold-dim: rgba(255, 213, 79, 0.15);
+  --color-chrome: #8ec8e8;
+  --color-text: #e8f6ff;
+  --color-muted: #6a9bbb;
+  --glow-sm: 0 0 14px rgba(0, 191, 255, 0.35);
+  --glow-md: 0 0 36px rgba(0, 191, 255, 0.28), 0 0 72px rgba(0, 191, 255, 0.12);
 }
 
 * {
@@ -50,16 +51,55 @@ h6 {
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-bg);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-accent-dim);
+  background: rgba(0, 191, 255, 0.25);
   border-radius: 3px;
 }
 ::selection {
   background: var(--color-accent-dim);
   color: var(--color-accent-2);
+}
+
+@layer components {
+  .hud-glass {
+    @apply border backdrop-blur-xl;
+    background: linear-gradient(
+      160deg,
+      rgba(0, 191, 255, 0.08),
+      rgba(5, 10, 18, 0.65) 40%,
+      rgba(5, 10, 18, 0.8)
+    );
+    border-color: var(--color-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 24px rgba(0, 191, 255, 0.06);
+  }
+
+  .hud-panel-title {
+    @apply text-[10px] font-semibold uppercase tracking-[0.22em];
+    color: var(--color-accent-2);
+  }
+
+  .hud-scanlines {
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 191, 255, 0.015) 2px,
+      rgba(0, 191, 255, 0.015) 4px
+    );
+  }
+
+  .hud-grid {
+    background-image: linear-gradient(
+        rgba(0, 191, 255, 0.04) 1px,
+        transparent 1px
+      ),
+      linear-gradient(90deg, rgba(0, 191, 255, 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
 }
