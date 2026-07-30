@@ -9,7 +9,14 @@ type SpeechRecognitionLike = {
   lang: string;
   start: () => void;
   stop: () => void;
-  onresult: ((ev: { results: { [i: number]: { [j: number]: { transcript: string } }; isFinal?: boolean } }) => void) | null;
+  onresult:
+    | ((ev: {
+        results: {
+          [i: number]: { [j: number]: { transcript: string }; isFinal?: boolean };
+          length: number;
+        };
+      }) => void)
+    | null;
   onerror: (() => void) | null;
   onend: (() => void) | null;
 };
@@ -37,6 +44,7 @@ export function VoiceDock({
   const mediaRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const lastSentRef = useRef("");
 
   useEffect(() => {
     return () => {
@@ -44,6 +52,15 @@ export function VoiceDock({
       mediaRef.current?.stop();
     };
   }, []);
+
+  function emitTranscript(text: string) {
+    const cleaned = text.trim();
+    if (!cleaned) return;
+    // Prevent duplicate spam from recognition quirks
+    if (cleaned === lastSentRef.current) return;
+    lastSentRef.current = cleaned;
+    onTranscript(cleaned);
+  }
 
   async function startBrowserSpeech() {
     const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -54,7 +71,7 @@ export function VoiceDock({
     recognition.lang = "en-US";
     recognition.onresult = (ev) => {
       const text = ev.results?.[0]?.[0]?.transcript?.trim();
-      if (text) onTranscript(text);
+      if (text) emitTranscript(text);
     };
     recognition.onerror = () => setListening(false);
     recognition.onend = () => setListening(false);
@@ -82,8 +99,14 @@ export function VoiceDock({
             method: "POST",
             body: form,
           });
-          const json = await res.json();
-          if (res.ok && json.text) onTranscript(String(json.text));
+          const raw = await res.text();
+          let json: { text?: string; error?: string } = {};
+          try {
+            json = raw ? JSON.parse(raw) : {};
+          } catch {
+            /* ignore */
+          }
+          if (res.ok && json.text) emitTranscript(String(json.text));
         } finally {
           setUploading(false);
           stream.getTracks().forEach((t) => t.stop());
@@ -141,8 +164,14 @@ export function VoiceDock({
   );
 }
 
-export function speakText(text: string) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
+export function speakText(
+  text: string,
+  opts?: { onStart?: () => void; onEnd?: () => void }
+) {
+  if (typeof window === "undefined" || !window.speechSynthesis) {
+    opts?.onEnd?.();
+    return;
+  }
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text.slice(0, 1200));
   utter.rate = 1.02;
@@ -152,5 +181,8 @@ export function speakText(text: string) {
     voices.find((v) => /en-GB|Daniel|Google UK/i.test(v.name)) ||
     voices.find((v) => v.lang.startsWith("en"));
   if (preferred) utter.voice = preferred;
+  utter.onstart = () => opts?.onStart?.();
+  utter.onend = () => opts?.onEnd?.();
+  utter.onerror = () => opts?.onEnd?.();
   window.speechSynthesis.speak(utter);
 }

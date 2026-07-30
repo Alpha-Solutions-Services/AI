@@ -1,3 +1,4 @@
+import { browserTools } from "@/lib/alpha/tools/browser";
 import { learnDispatchTools } from "@/lib/alpha/tools/learndispatch";
 import { opsTools } from "@/lib/alpha/tools/ops";
 import { portalTools } from "@/lib/alpha/tools/portal";
@@ -13,6 +14,7 @@ const ALL_TOOLS: AlphaTool[] = [
   ...learnDispatchTools,
   ...opsTools,
   ...webTools,
+  ...browserTools,
 ];
 
 const byName = new Map(ALL_TOOLS.map((t) => [t.name, t]));
