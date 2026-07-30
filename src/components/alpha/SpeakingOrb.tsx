@@ -1,38 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 type Mode = "idle" | "listening" | "thinking" | "speaking";
 
-type Particle = {
-  kind: "letter" | "orbit" | "dust";
-  tx: number;
-  ty: number;
-  x: number;
-  y: number;
-  angle: number;
-  orbitR: number;
-  speed: number;
-  size: number;
-  phase: number;
-};
-
-function sampleLetterA(count: number): { x: number; y: number }[] {
-  const pts: { x: number; y: number }[] = [];
-  const left = (t: number) => ({ x: -0.52 + t * 0.52, y: 0.72 - t * 1.42 });
-  const right = (t: number) => ({ x: 0.52 - t * 0.52, y: 0.72 - t * 1.42 });
-  const bar = (t: number) => ({ x: -0.26 + t * 0.52, y: 0.1 });
-  const nSide = Math.floor(count * 0.42);
-  const nBar = count - nSide * 2;
-  for (let i = 0; i < nSide; i++) pts.push(left(i / Math.max(1, nSide - 1)));
-  for (let i = 0; i < nSide; i++) pts.push(right(i / Math.max(1, nSide - 1)));
-  for (let i = 0; i < nBar; i++) pts.push(bar(i / Math.max(1, nBar - 1)));
-  return pts;
-}
-
-const RINGS = [0.72, 0.88, 1.05, 1.22, 1.4, 1.58];
-
-/** JARVIS-style holographic A core with 6 HUD rings. */
+/**
+ * Professional holographic A — thin wireframe + fine mesh, not cartoon dots.
+ */
 export function SpeakingOrb({
   mode = "idle",
   level = 0,
@@ -45,7 +19,6 @@ export function SpeakingOrb({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modeRef = useRef(mode);
   const levelRef = useRef(level);
-  const letterPts = useMemo(() => sampleLetterA(110), []);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -59,20 +32,40 @@ export function SpeakingOrb({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    const c = ctx;
 
     let raf = 0;
     let t = 0;
-    let particles: Particle[] = [];
     let w = 0;
     let h = 0;
     let scale = 1;
+
+    // A silhouette in normalized units (wireframe vertices)
+    const A_OUTER: [number, number][] = [
+      [-0.48, 0.68],
+      [0, -0.72],
+      [0.48, 0.68],
+    ];
+    const A_BAR: [number, number][] = [
+      [-0.22, 0.12],
+      [0.22, 0.12],
+    ];
+    // Inner parallel strokes (double-line tech look)
+    const A_INNER_L: [number, number][] = [
+      [-0.34, 0.58],
+      [-0.06, -0.42],
+    ];
+    const A_INNER_R: [number, number][] = [
+      [0.34, 0.58],
+      [0.06, -0.42],
+    ];
 
     const resize = () => {
       const parent = canvas.parentElement;
       const css = Math.min(
         parent?.clientWidth || 360,
         parent?.clientHeight || 360,
-        460
+        420
       );
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       w = css;
@@ -81,59 +74,41 @@ export function SpeakingOrb({
       canvas.height = css * dpr;
       canvas.style.width = `${css}px`;
       canvas.style.height = `${css}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      scale = css * 0.32;
-
-      particles = [
-        ...letterPts.map((p, i) => ({
-          kind: "letter" as const,
-          tx: p.x,
-          ty: p.y,
-          x: p.x,
-          y: p.y,
-          angle: 0,
-          orbitR: 0,
-          speed: 0,
-          size: 1.2 + (i % 5) * 0.25,
-          phase: Math.random() * Math.PI * 2,
-        })),
-        ...Array.from({ length: 56 }, (_, i) => {
-          const ring = RINGS[2 + (i % 4)];
-          const a = (i / 56) * Math.PI * 2;
-          return {
-            kind: "orbit" as const,
-            tx: 0,
-            ty: 0,
-            x: Math.cos(a) * ring,
-            y: Math.sin(a) * ring,
-            angle: a,
-            orbitR: ring,
-            speed: (i % 2 === 0 ? 1 : -1) * (0.004 + (i % 5) * 0.001),
-            size: 0.9 + (i % 3) * 0.25,
-            phase: Math.random() * Math.PI * 2,
-          };
-        }),
-        ...Array.from({ length: 24 }, (_, i) => {
-          const a = (i / 24) * Math.PI * 2;
-          return {
-            kind: "dust" as const,
-            tx: 0,
-            ty: 0,
-            x: Math.cos(a),
-            y: Math.sin(a),
-            angle: a,
-            orbitR: 1.65 + (i % 3) * 0.04,
-            speed: -0.003 - (i % 4) * 0.0006,
-            size: 0.55,
-            phase: Math.random() * Math.PI * 2,
-          };
-        }),
-      ];
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      scale = css * 0.3;
     };
 
     resize();
     const ro = new ResizeObserver(resize);
     if (canvas.parentElement) ro.observe(canvas.parentElement);
+
+    function strokePoly(
+      pts: [number, number][],
+      color: string,
+      lineWidth: number,
+      close = false
+    ) {
+      c.beginPath();
+      c.strokeStyle = color;
+      c.lineWidth = lineWidth;
+      c.lineCap = "round";
+      c.lineJoin = "round";
+      pts.forEach(([x, y], i) => {
+        const px = x * scale;
+        const py = y * scale;
+        if (i === 0) c.moveTo(px, py);
+        else c.lineTo(px, py);
+      });
+      if (close) c.closePath();
+      c.stroke();
+    }
+
+    function node(x: number, y: number, r: number, a: number) {
+      c.beginPath();
+      c.fillStyle = `rgba(200, 235, 255, ${a})`;
+      c.arc(x * scale, y * scale, r, 0, Math.PI * 2);
+      c.fill();
+    }
 
     const draw = () => {
       t += 1;
@@ -145,144 +120,182 @@ export function SpeakingOrb({
         modeNow === "thinking";
       const energy =
         modeNow === "speaking"
-          ? 0.3 + lvl * 0.85
+          ? 0.22 + lvl * 0.55
           : modeNow === "listening"
-            ? 0.25 + lvl * 0.65
+            ? 0.2 + lvl * 0.45
             : modeNow === "thinking"
-              ? 0.32 + Math.sin(t * 0.09) * 0.12
-              : 0.12;
+              ? 0.24 + Math.sin(t * 0.08) * 0.08
+              : 0.1;
 
-      ctx.clearRect(0, 0, w, h);
+      c.clearRect(0, 0, w, h);
       const cx = w / 2;
-      const cy = h / 2;
+      const cy = h / 2 + scale * 0.02;
 
-      // Projection pedestal glow
-      const base = ctx.createRadialGradient(
+      // Soft pedestal (subtle, not neon blob)
+      const base = c.createRadialGradient(
         cx,
-        cy + scale * 1.15,
-        2,
+        cy + scale * 1.05,
+        1,
         cx,
-        cy + scale * 1.15,
-        scale * 0.9
+        cy + scale * 1.05,
+        scale * 0.75
       );
-      base.addColorStop(0, `rgba(0, 191, 255, ${0.18 + energy * 0.2})`);
-      base.addColorStop(1, "rgba(0, 191, 255, 0)");
-      ctx.fillStyle = base;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + scale * 1.2, scale * 0.85, scale * 0.18, 0, 0, Math.PI * 2);
-      ctx.fill();
+      base.addColorStop(0, `rgba(0, 160, 210, ${0.12 + energy * 0.12})`);
+      base.addColorStop(1, "rgba(0, 160, 210, 0)");
+      c.fillStyle = base;
+      c.beginPath();
+      c.ellipse(
+        cx,
+        cy + scale * 1.08,
+        scale * 0.72,
+        scale * 0.12,
+        0,
+        0,
+        Math.PI * 2
+      );
+      c.fill();
 
-      // Core bloom
-      const glowR = scale * (0.75 + energy * 0.2);
-      const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, glowR);
-      grad.addColorStop(0, active ? "rgba(180, 235, 255, 0.4)" : "rgba(0, 191, 255, 0.16)");
-      grad.addColorStop(0.45, "rgba(0, 160, 220, 0.1)");
+      // Core bloom — restrained
+      const glowR = scale * (0.95 + energy * 0.12);
+      const grad = c.createRadialGradient(cx, cy, 2, cx, cy, glowR);
+      grad.addColorStop(0, `rgba(0, 180, 230, ${0.08 + energy * 0.1})`);
+      grad.addColorStop(0.55, "rgba(0, 140, 200, 0.04)");
       grad.addColorStop(1, "rgba(5, 10, 18, 0)");
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
-      ctx.fill();
+      c.fillStyle = grad;
+      c.beginPath();
+      c.arc(cx, cy, glowR, 0, Math.PI * 2);
+      c.fill();
 
-      // 6 HUD rings
-      RINGS.forEach((rMul, idx) => {
-        const spin = t * (0.004 + idx * 0.0015) * (idx % 2 === 0 ? 1 : -1);
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(spin);
-        ctx.beginPath();
-        ctx.strokeStyle = `rgba(0, 191, 255, ${0.08 + energy * 0.12 + (idx === 3 ? 0.08 : 0)})`;
-        ctx.lineWidth = idx === 0 || idx === 5 ? 1.4 : 0.9;
-        ctx.setLineDash(idx % 2 === 0 ? [6, 8] : []);
-        ctx.arc(0, 0, scale * (rMul + energy * 0.03), 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        // tick marks
-        if (idx === 2 || idx === 4) {
-          for (let k = 0; k < 12; k++) {
-            const a = (k / 12) * Math.PI * 2;
+      // HUD rings — thin, precise
+      const rings = [0.78, 0.98, 1.18, 1.38];
+      rings.forEach((rMul, idx) => {
+        const spin = t * (0.002 + idx * 0.0008) * (idx % 2 === 0 ? 1 : -1);
+        c.save();
+        c.translate(cx, cy);
+        c.rotate(spin);
+        c.beginPath();
+        const alpha = 0.1 + energy * 0.1 + (idx === 1 ? 0.06 : 0);
+        c.strokeStyle = `rgba(100, 190, 230, ${alpha})`;
+        c.lineWidth = idx === 0 ? 1.1 : 0.7;
+        if (idx % 2 === 0) c.setLineDash([3, 10]);
+        else c.setLineDash([18, 14]);
+        c.arc(0, 0, scale * (rMul + energy * 0.015), 0, Math.PI * 2);
+        c.stroke();
+        c.setLineDash([]);
+
+        // Sparse precision ticks
+        if (idx === 1 || idx === 3) {
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2;
             const r0 = scale * rMul;
-            ctx.beginPath();
-            ctx.strokeStyle = `rgba(79, 195, 247, ${0.2 + energy * 0.2})`;
-            ctx.lineWidth = 1;
-            ctx.moveTo(Math.cos(a) * r0 * 0.96, Math.sin(a) * r0 * 0.96);
-            ctx.lineTo(Math.cos(a) * r0 * 1.04, Math.sin(a) * r0 * 1.04);
-            ctx.stroke();
+            c.beginPath();
+            c.strokeStyle = `rgba(120, 200, 235, ${0.18 + energy * 0.15})`;
+            c.lineWidth = 0.8;
+            c.moveTo(Math.cos(a) * r0 * 0.97, Math.sin(a) * r0 * 0.97);
+            c.lineTo(Math.cos(a) * r0 * 1.03, Math.sin(a) * r0 * 1.03);
+            c.stroke();
           }
         }
-        ctx.restore();
+        c.restore();
       });
 
-      // Stroked A
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.scale(scale, scale);
-      ctx.strokeStyle = `rgba(0, 191, 255, ${0.2 + energy * 0.25})`;
-      ctx.lineWidth = 0.05;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.shadowColor = "rgba(0, 191, 255, 0.65)";
-      ctx.shadowBlur = 12;
-      ctx.beginPath();
-      ctx.moveTo(-0.52, 0.72);
-      ctx.lineTo(0, -0.7);
-      ctx.lineTo(0.52, 0.72);
-      ctx.moveTo(-0.26, 0.1);
-      ctx.lineTo(0.26, 0.1);
-      ctx.stroke();
-      ctx.restore();
+      // Scan arc
+      c.save();
+      c.translate(cx, cy);
+      c.rotate(t * 0.012);
+      c.beginPath();
+      c.strokeStyle = `rgba(0, 191, 255, ${0.25 + energy * 0.25})`;
+      c.lineWidth = 1.2;
+      c.arc(0, 0, scale * 1.18, -0.35, 0.55);
+      c.stroke();
+      c.restore();
 
-      for (const p of particles) {
-        if (p.kind === "orbit" || p.kind === "dust") {
-          p.angle += p.speed * (active ? 1.5 + energy : 0.4);
-          const wobble = Math.sin(t * 0.03 + p.phase) * (0.02 + energy * 0.05);
-          const r = p.orbitR + wobble;
-          p.x = Math.cos(p.angle) * r;
-          p.y = Math.sin(p.angle) * r;
-        } else {
-          const burst =
-            modeNow === "speaking"
-              ? Math.sin(t * 0.28 + p.phase * 2.2) * energy * 0.14
-              : modeNow === "listening"
-                ? Math.sin(t * 0.18 + p.phase) * energy * 0.08
-                : Math.sin(t * 0.025 + p.phase) * 0.012;
-          p.x += (p.tx * (1 + burst) - p.x) * 0.14;
-          p.y += (p.ty * (1 + burst * 0.55) - p.y) * 0.14;
-        }
+      c.save();
+      c.translate(cx, cy);
 
-        const px = cx + p.x * scale;
-        const py = cy + p.y * scale;
-        const alpha =
-          p.kind === "letter"
-            ? 0.6 + energy * 0.35
-            : p.kind === "orbit"
-              ? 0.3 + energy * 0.28
-              : 0.12 + energy * 0.15;
+      // Mesh fill inside A (fine lattice — professional, not bubbly)
+      c.save();
+      c.beginPath();
+      c.moveTo(A_OUTER[0][0] * scale, A_OUTER[0][1] * scale);
+      c.lineTo(A_OUTER[1][0] * scale, A_OUTER[1][1] * scale);
+      c.lineTo(A_OUTER[2][0] * scale, A_OUTER[2][1] * scale);
+      c.closePath();
+      // cut bar window roughly by not filling full — clip to outer then draw lines
+      c.clip();
 
-        if (p.kind === "letter") {
-          const g = ctx.createRadialGradient(px, py, 0, px, py, p.size * 3);
-          g.addColorStop(0, `rgba(230, 248, 255, ${alpha})`);
-          g.addColorStop(0.5, `rgba(0, 191, 255, ${alpha * 0.35})`);
-          g.addColorStop(1, "rgba(0, 191, 255, 0)");
-          ctx.fillStyle = g;
-          ctx.beginPath();
-          ctx.arc(px, py, p.size * (2.4 + energy), 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        ctx.beginPath();
-        ctx.fillStyle =
-          p.kind === "letter"
-            ? `rgba(235, 250, 255, ${Math.min(1, alpha + 0.1)})`
-            : `rgba(79, 195, 247, ${alpha})`;
-        ctx.arc(
-          px,
-          py,
-          p.size * (1 + energy * (p.kind === "letter" ? 0.5 : 0.2)),
-          0,
-          Math.PI * 2
-        );
-        ctx.fill();
+      const meshAlpha = 0.06 + energy * 0.08;
+      c.strokeStyle = `rgba(120, 200, 235, ${meshAlpha})`;
+      c.lineWidth = 0.5;
+      for (let i = -6; i <= 6; i++) {
+        c.beginPath();
+        c.moveTo(i * scale * 0.1, -scale);
+        c.lineTo(i * scale * 0.1, scale);
+        c.stroke();
       }
+      for (let i = -6; i <= 6; i++) {
+        c.beginPath();
+        c.moveTo(-scale, i * scale * 0.1);
+        c.lineTo(scale, i * scale * 0.1);
+        c.stroke();
+      }
+      c.restore();
+
+      // Primary A strokes
+      const strokeA = 0.35 + energy * 0.35;
+      c.shadowColor = "rgba(0, 180, 230, 0.45)";
+      c.shadowBlur = 8 + energy * 6;
+
+      strokePoly(
+        A_OUTER,
+        `rgba(180, 230, 255, ${strokeA})`,
+        1.6 + energy * 0.4,
+        false
+      );
+      strokePoly(A_BAR, `rgba(180, 230, 255, ${strokeA})`, 1.5);
+
+      c.shadowBlur = 0;
+      strokePoly(
+        A_INNER_L,
+        `rgba(0, 180, 220, ${0.25 + energy * 0.2})`,
+        0.9
+      );
+      strokePoly(
+        A_INNER_R,
+        `rgba(0, 180, 220, ${0.25 + energy * 0.2})`,
+        0.9
+      );
+
+      // Corner nodes — tiny, sharp
+      const nodes: [number, number][] = [
+        [-0.48, 0.68],
+        [0, -0.72],
+        [0.48, 0.68],
+        [-0.22, 0.12],
+        [0.22, 0.12],
+        [-0.18, 0.35],
+        [0.18, 0.35],
+      ];
+      nodes.forEach(([x, y], i) => {
+        const pulse =
+          active && i < 3
+            ? 0.55 + Math.sin(t * 0.12 + i) * 0.2 * energy
+            : 0.45;
+        node(x, y, 1.6 + energy * 0.4, pulse);
+      });
+
+      // Orbiting micro-nodes (sparse, not particle soup)
+      for (let i = 0; i < 14; i++) {
+        const a = (i / 14) * Math.PI * 2 + t * 0.008 * (i % 2 === 0 ? 1 : -1);
+        const r = scale * (1.05 + (i % 3) * 0.08);
+        const px = Math.cos(a) * r;
+        const py = Math.sin(a) * r;
+        c.beginPath();
+        c.fillStyle = `rgba(120, 200, 235, ${0.2 + energy * 0.25})`;
+        c.arc(px, py, 1.1, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      c.restore();
 
       raf = requestAnimationFrame(draw);
     };
@@ -292,19 +305,16 @@ export function SpeakingOrb({
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [letterPts]);
+  }, []);
 
   return (
     <div
-      className={`relative mx-auto flex aspect-square w-full max-w-[min(78vw,380px)] items-center justify-center ${className}`}
+      className={`relative mx-auto flex aspect-square w-full max-w-[min(72vw,340px)] items-center justify-center ${className}`}
       aria-hidden
     >
       <div
-        className="pointer-events-none absolute bottom-[6%] left-1/2 h-[28%] w-[62%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(ellipse_at_center,_rgba(0,191,255,0.45),_transparent_70%)] blur-md"
-        style={{
-          opacity: mode === "idle" ? 0.55 : 0.85,
-          boxShadow: "0 0 40px rgba(0,191,255,0.35)",
-        }}
+        className="pointer-events-none absolute bottom-[8%] left-1/2 h-[18%] w-[48%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(ellipse_at_center,_rgba(0,160,210,0.28),_transparent_72%)] blur-sm"
+        style={{ opacity: mode === "idle" ? 0.45 : 0.7 }}
       />
       <canvas ref={canvasRef} className="relative z-10 h-full w-full" />
     </div>

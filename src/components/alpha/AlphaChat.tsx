@@ -177,8 +177,8 @@ export function AlphaChat() {
               : mode === "speaking"
                 ? "Speaking · بول رہا ہے"
                 : mode === "thinking"
-                  ? "Thinking · سوچ رہا ہے"
-                  : "Holographic core · online"}
+                  ? "Processing"
+                  : "Alpha core · ready"}
           </p>
           {(listening || interim) && (
             <p
@@ -262,13 +262,13 @@ export function AlphaChat() {
       </div>
 
       <form
-        className="mt-auto border-t border-[var(--color-border)] bg-black/40 px-3 py-3 backdrop-blur-md"
+        className="mt-auto border-t border-[var(--color-border)] bg-black/50 px-3 py-3 backdrop-blur-md"
         onSubmit={(e) => {
           e.preventDefault();
           void send(text);
         }}
       >
-        <div className="mx-auto flex max-w-2xl items-end gap-2">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-2.5">
           <VoiceDock
             disabled={busy}
             speakEnabled={speakEnabled}
@@ -284,27 +284,30 @@ export function AlphaChat() {
               void send(cleaned);
             }}
           />
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={2}
-            dir="auto"
-            placeholder="Ask Alpha AI Agent anything…"
-            className="max-h-28 min-h-[44px] flex-1 resize-none border border-[var(--color-border)] bg-[#050a12]/70 px-3 py-2.5 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)]/50"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void send(text);
-              }
-            }}
-          />
-          <button
-            type="submit"
-            disabled={busy || !text.trim()}
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center border border-[var(--color-accent)]/50 bg-[var(--color-accent)] text-[#050a12] shadow-[var(--glow-sm)] disabled:opacity-40"
-          >
-            <Send size={16} />
-          </button>
+          <div className="flex items-end gap-2">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={2}
+              dir="auto"
+              placeholder="Ask Alpha AI Agent anything…"
+              className="max-h-28 min-h-[44px] flex-1 resize-none border border-[var(--color-border)] bg-[#050a12]/70 px-3 py-2.5 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)]/50"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void send(text);
+                }
+              }}
+            />
+            <button
+              type="submit"
+              disabled={busy || !text.trim()}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center border border-[var(--color-accent)]/50 bg-[var(--color-accent)] text-[#050a12] shadow-[var(--glow-sm)] disabled:opacity-40"
+              aria-label="Send"
+            >
+              <Send size={16} />
+            </button>
+          </div>
         </div>
       </form>
     </div>
