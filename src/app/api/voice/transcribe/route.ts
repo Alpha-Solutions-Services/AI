@@ -11,7 +11,10 @@ export async function POST(req: NextRequest) {
 
   const groq = getGroq();
   if (!groq) {
-    return NextResponse.json({ error: "GROQ_API_KEY not configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "GROQ_API_KEY not configured" },
+      { status: 503 }
+    );
   }
 
   const form = await req.formData();
@@ -20,10 +23,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "audio file required" }, { status: 400 });
   }
 
+  // No forced language — Whisper auto-detects English / Urdu / mixed.
   const transcription = await groq.audio.transcriptions.create({
     file,
     model: getWhisperModel(),
-    language: "en",
   });
 
   return NextResponse.json({ text: transcription.text });

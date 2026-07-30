@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { BookOpen, LogOut, MessageSquare, Settings } from "lucide-react";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { createClient } from "@/lib/supabase/client";
 
 const nav = [
@@ -30,33 +31,35 @@ export function AppShell({
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col">
+    <div className="relative flex min-h-[100dvh] flex-col">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(56,163,255,0.14),_transparent_50%),linear-gradient(180deg,#05080f_0%,#071018_100%)]"
       />
-      <header className="relative z-10 flex items-center justify-between border-b border-[var(--color-border)] px-4 py-3 md:px-6">
-        <div className="flex items-center gap-3">
+
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg)]/95 px-4 py-3 backdrop-blur-md md:px-6">
+        <div className="flex min-w-0 items-center gap-3">
           <Image
             src="/alpha-logo.png"
             alt="Alpha"
             width={36}
             height={36}
-            className="rounded-lg"
+            className="shrink-0 rounded-lg"
           />
-          <div>
+          <div className="min-w-0">
             <p
-              className="text-xl leading-none text-[var(--color-text)]"
+              className="truncate text-lg leading-none text-[var(--color-text)] md:text-xl"
               style={{ fontFamily: "var(--font-display), sans-serif" }}
             >
               Alpha
             </p>
-            <p className="text-[11px] text-[var(--color-muted)]">
+            <p className="truncate text-[11px] text-[var(--color-muted)]">
               Staff Jarvis · {email || "signed in"}
             </p>
           </div>
         </div>
-        <nav className="flex items-center gap-1">
+
+        <nav className="hidden items-center gap-1 md:flex">
           {nav.map((item) => {
             const Icon = item.icon;
             const active =
@@ -74,7 +77,7 @@ export function AppShell({
                 }`}
               >
                 <Icon size={16} />
-                <span className="hidden sm:inline">{item.label}</span>
+                {item.label}
               </Link>
             );
           })}
@@ -84,11 +87,25 @@ export function AppShell({
             className="ml-1 flex items-center gap-1.5 px-3 py-2 text-sm text-[var(--color-muted)] hover:text-[var(--color-text)]"
           >
             <LogOut size={16} />
-            <span className="hidden sm:inline">Sign out</span>
+            Sign out
           </button>
         </nav>
+
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="flex items-center gap-1.5 px-2 py-2 text-[var(--color-muted)] md:hidden"
+          aria-label="Sign out"
+        >
+          <LogOut size={18} />
+        </button>
       </header>
-      <main className="relative z-10 flex flex-1 flex-col">{children}</main>
+
+      <main className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+        {children}
+      </main>
+
+      <MobileBottomNav items={nav} />
     </div>
   );
 }

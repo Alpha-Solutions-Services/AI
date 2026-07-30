@@ -16,9 +16,9 @@ type Msg = {
 
 const SUGGESTIONS = [
   "How many open Portal tickets are there?",
-  "Open the Portal admin in my browser",
+  "Portal admin کھولو",
   "Search the web for FMCSA ELD updates",
-  "Summarize Learn Dispatch live sessions",
+  "Learn Dispatch sessions خلاصہ کرو",
 ];
 
 async function runClientActions(actions: ClientAction[]) {
@@ -45,10 +45,12 @@ export function AlphaChat() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
+  const [level, setLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingConfirm[]>([]);
   const [speakEnabled, setSpeakEnabled] = useState(true);
-  const [listenAfterReply, setListenAfterReply] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
 
@@ -56,7 +58,6 @@ export function AlphaChat() {
     try {
       const s = localStorage.getItem("alpha_speak");
       setSpeakEnabled(s === null ? true : s === "1");
-      setListenAfterReply(localStorage.getItem("alpha_listen_after") === "1");
     } catch {
       /* ignore */
     }
@@ -64,7 +65,7 @@ export function AlphaChat() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, pending, busy]);
+  }, [messages, pending, busy, interim]);
 
   function persistSpeak(v: boolean) {
     setSpeakEnabled(v);
@@ -75,6 +76,14 @@ export function AlphaChat() {
     }
   }
 
+  const mode = speaking
+    ? "speaking"
+    : listening
+      ? "listening"
+      : busy
+        ? "thinking"
+        : "idle";
+
   async function send(message: string) {
     const trimmed = message.trim();
     if (!trimmed || busyRef.current) return;
@@ -82,6 +91,7 @@ export function AlphaChat() {
     setBusy(true);
     setError(null);
     setText("");
+    setInterim("");
     const userMsg: Msg = {
       id: `u-${Date.now()}`,
       role: "user",
@@ -134,7 +144,11 @@ export function AlphaChat() {
       if (speakEnabled && reply) {
         speakText(reply, {
           onStart: () => setSpeaking(true),
-          onEnd: () => setSpeaking(false),
+          onEnd: () => {
+            setSpeaking(false);
+            setLevel(0);
+          },
+          onBoundary: (p) => setLevel(0.25 + p * 0.75),
         });
       }
     } catch (err) {
@@ -145,30 +159,49 @@ export function AlphaChat() {
     }
   }
 
+  const showHeroOrb = messages.length === 0 || listening || speaking || busy;
+
   return (
-    <div className="relative mx-auto flex h-[calc(100dvh-64px)] w-full max-w-4xl flex-col px-4 pb-4 pt-6 md:px-6">
-      <SpeakingOrb active={speaking || busy} />
+    <div className="relative mx-auto flex h-full min-h-0 w-full max-w-3xl flex-1 flex-col px-4 pt-4 md:max-w-4xl md:px-6 md:pt-6">
+      {/* Centered agent orb */}
+      {showHeroOrb ? (
+        <div className="mb-3 flex flex-col items-center justify-center">
+          <SpeakingOrb mode={mode} level={level} />
+          <p className="mt-1 text-center text-[11px] uppercase tracking-[0.2em] text-[var(--color-muted)]">
+            {mode === "listening"
+              ? "Listening · سن رہا ہے"
+              : mode === "speaking"
+                ? "Speaking · بول رہا ہے"
+                : mode === "thinking"
+                  ? "Thinking · سوچ رہا ہے"
+                  : "Alpha ready · تیار"}
+          </p>
+          {(listening || interim) && (
+            <p
+              className="mt-2 max-w-md px-3 text-center text-sm text-[var(--color-accent-2)]"
+              dir="auto"
+            >
+              {interim || "…"}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="mb-2 flex justify-center md:mb-3">
+          <div className="w-[140px] md:w-[180px]">
+            <SpeakingOrb mode={mode} level={level} />
+          </div>
+        </div>
+      )}
 
-      <div className="mb-4 pr-28">
-        <h1
-          className="text-3xl text-[var(--color-text)] md:text-4xl"
-          style={{ fontFamily: "var(--font-display), sans-serif" }}
-        >
-          Alpha
-        </h1>
-        <p className="mt-1 text-sm text-[var(--color-muted)]">
-          Portal · TMS · Learn Dispatch · company knowledge · live web · browser
-        </p>
-      </div>
-
-      <div className="flex-1 space-y-3 overflow-y-auto pr-1">
-        {messages.length === 0 ? (
-          <div className="grid gap-2 sm:grid-cols-2">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-2">
+        {messages.length === 0 && !listening ? (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => void send(s)}
+                dir="auto"
                 className="border border-[var(--color-border)] bg-[var(--color-surface)]/50 px-4 py-3 text-left text-sm text-[var(--color-chrome)] hover:border-[var(--color-border-glow)]"
               >
                 {s}
@@ -182,7 +215,8 @@ export function AlphaChat() {
             key={m.id}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`max-w-[85%] whitespace-pre-wrap px-4 py-3 text-sm leading-relaxed ${
+            dir="auto"
+            className={`max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed md:max-w-[85%] ${
               m.role === "user"
                 ? "ml-auto bg-[var(--color-accent)] text-[#05080f]"
                 : m.role === "assistant"
@@ -228,48 +262,53 @@ export function AlphaChat() {
       {error ? <p className="mb-2 text-sm text-red-400">{error}</p> : null}
 
       <form
-        className="mt-3 flex items-end gap-2 border border-[var(--color-border)] bg-[var(--color-surface)]/70 p-2"
+        className="sticky bottom-0 z-20 -mx-4 mt-auto border-t border-[var(--color-border)] bg-[var(--color-bg)]/95 px-4 py-3 backdrop-blur-md md:static md:mx-0 md:mt-3 md:border md:border-[var(--color-border)] md:bg-[var(--color-surface)]/70 md:px-2 md:py-2 md:backdrop-blur-none"
         onSubmit={(e) => {
           e.preventDefault();
           void send(text);
         }}
       >
-        <VoiceDock
-          disabled={busy}
-          speakEnabled={speakEnabled}
-          onSpeakEnabledChange={persistSpeak}
-          onTranscript={(t) => {
-            if (busyRef.current) return;
-            setText(t);
-            void send(t);
-          }}
-        />
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={2}
-          placeholder="Ask Alpha anything — systems, web, or open apps in your browser…"
-          className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent px-2 py-2 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)]"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              void send(text);
-            }
-          }}
-        />
-        <button
-          type="submit"
-          disabled={busy || !text.trim()}
-          className="inline-flex h-10 w-10 items-center justify-center bg-[var(--color-accent)] text-[#05080f] disabled:opacity-40"
-        >
-          <Send size={16} />
-        </button>
+        <div className="flex items-end gap-2">
+          <VoiceDock
+            disabled={busy}
+            speakEnabled={speakEnabled}
+            onSpeakEnabledChange={persistSpeak}
+            onListeningChange={setListening}
+            onInterim={setInterim}
+            onLevel={setLevel}
+            onTranscript={(t) => {
+              if (busyRef.current) return;
+              setText(t);
+              setInterim(t);
+              void send(t);
+            }}
+          />
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={2}
+            dir="auto"
+            placeholder="English or اردو — ask Alpha…"
+            className="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] md:bg-transparent md:px-2"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send(text);
+              }
+            }}
+          />
+          <button
+            type="submit"
+            disabled={busy || !text.trim()}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-accent)] text-[#05080f] disabled:opacity-40"
+          >
+            <Send size={16} />
+          </button>
+        </div>
+        <p className="mt-2 text-[10px] text-[var(--color-muted)] md:text-[11px]">
+          Mic: English + اردو · particles form A · confirm before writes
+        </p>
       </form>
-      <p className="mt-2 text-[11px] text-[var(--color-muted)]">
-        Write actions need confirm. Orb pulses while Alpha speaks. Browser
-        tools can open Portal/TMS/Learn Dispatch tabs.
-        {listenAfterReply ? " · listen-after-reply on" : ""}
-      </p>
     </div>
   );
 }
