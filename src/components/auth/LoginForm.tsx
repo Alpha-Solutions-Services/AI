@@ -68,7 +68,14 @@ export function LoginForm() {
       return;
     }
     const next = sp?.get("next") || "/";
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+    // Prefer configured AI origin so OAuth never falls back to marketing/portal Site URL.
+    const aiOrigin = (
+      process.env.NEXT_PUBLIC_AI_URL?.trim() || window.location.origin
+    ).replace(/\/$/, "");
+    // No query string on redirectTo — Supabase Redirect URL allowlist is exact-path sensitive.
+    // Store next in a short-lived cookie (same pattern as Learn Dispatch).
+    document.cookie = `alpha_oauth_next=${encodeURIComponent(next)}; Path=/; Max-Age=600; SameSite=Lax`;
+    const redirectTo = `${aiOrigin}/auth/callback`;
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -80,7 +87,9 @@ export function LoginForm() {
       },
     });
     if (err) {
-      setError(err.message);
+      setError(
+        `${err.message} — add ${redirectTo} in Supabase → Authentication → URL Configuration → Redirect URLs.`
+      );
       setBusy(false);
     }
   }

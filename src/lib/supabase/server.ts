@@ -10,6 +10,7 @@ export async function createClient() {
   if (!url || !anon) return null;
 
   return createServerClient(url, anon, {
+    cookieEncoding: "base64url",
     cookies: {
       getAll() {
         return cookieStore.getAll();

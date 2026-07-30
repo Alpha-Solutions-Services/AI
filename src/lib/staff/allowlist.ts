@@ -1,6 +1,8 @@
 const FALLBACK_STAFF_EMAILS = [
   "alphaassistant.alpha@gmail.com",
   "muhammadmikran.alpha@gmail.com",
+  "maknoon.alpha@gmail.com",
+  "mikran.dispatch@gmail.com",
 ] as const;
 
 function normalize(email: string): string {

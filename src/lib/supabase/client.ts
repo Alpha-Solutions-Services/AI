@@ -8,6 +8,7 @@ export function createClient() {
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anon) return null;
   return createBrowserClient(url, anon, {
+    cookieEncoding: "base64url",
     cookieOptions: {
       path: "/",
       sameSite: "lax",

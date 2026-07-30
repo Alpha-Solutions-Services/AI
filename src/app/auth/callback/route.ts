@@ -10,8 +10,15 @@ type CookieToSet = {
   options?: Parameters<NextResponse["cookies"]["set"]>[2];
 };
 
-function safeNextPath(raw: string | null): string {
-  if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
+function safeNextPath(raw: string | null | undefined): string {
+  if (!raw) return "/";
+  let value = raw;
+  try {
+    value = decodeURIComponent(raw);
+  } catch {
+    /* keep raw */
+  }
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
   return "/";
 }
 
@@ -25,6 +32,7 @@ function loginError(
   for (const c of cookies) {
     res.cookies.set(c.name, c.value, c.options);
   }
+  res.cookies.set("alpha_oauth_next", "", { path: "/", maxAge: 0 });
   return res;
 }
 
@@ -34,7 +42,10 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
   const oauthError = url.searchParams.get("error");
   const oauthDesc = url.searchParams.get("error_description");
-  const next = safeNextPath(url.searchParams.get("next"));
+  const next = safeNextPath(
+    url.searchParams.get("next") ||
+      request.cookies.get("alpha_oauth_next")?.value
+  );
 
   if (oauthError) {
     return loginError(origin, oauthDesc || oauthError);
@@ -51,6 +62,7 @@ export async function GET(request: NextRequest) {
 
   const cookiesToSet: CookieToSet[] = [];
   const supabase = createServerClient(supabaseUrl, anon, {
+    cookieEncoding: "base64url",
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -86,5 +98,6 @@ export async function GET(request: NextRequest) {
   for (const c of cookiesToSet) {
     response.cookies.set(c.name, c.value, c.options);
   }
+  response.cookies.set("alpha_oauth_next", "", { path: "/", maxAge: 0 });
   return response;
 }
