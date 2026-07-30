@@ -7,6 +7,7 @@ import { ConfirmCard, type PendingConfirm } from "@/components/alpha/ConfirmCard
 import { SpeakingOrb } from "@/components/alpha/SpeakingOrb";
 import { VoiceDock, speakText } from "@/components/alpha/VoiceDock";
 import type { ClientAction } from "@/lib/alpha/tools/browser";
+import { cleanVoiceTranscript } from "@/lib/alpha/voice-text";
 
 type Msg = {
   id: string;
@@ -85,7 +86,7 @@ export function AlphaChat() {
         : "idle";
 
   async function send(message: string) {
-    const trimmed = message.trim();
+    const trimmed = cleanVoiceTranscript(message);
     if (!trimmed || busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
@@ -167,18 +168,18 @@ export function AlphaChat() {
       {showHeroOrb ? (
         <div className="mb-3 flex flex-col items-center justify-center">
           <SpeakingOrb mode={mode} level={level} />
-          <p className="mt-1 text-center text-[11px] uppercase tracking-[0.2em] text-[var(--color-muted)]">
+          <p className="mt-2 text-center text-[10px] font-medium uppercase tracking-[0.28em] text-[var(--color-chrome)]/80">
             {mode === "listening"
               ? "Listening · سن رہا ہے"
               : mode === "speaking"
                 ? "Speaking · بول رہا ہے"
                 : mode === "thinking"
                   ? "Thinking · سوچ رہا ہے"
-                  : "Alpha ready · تیار"}
+                  : "Alpha · تیار"}
           </p>
           {(listening || interim) && (
             <p
-              className="mt-2 max-w-md px-3 text-center text-sm text-[var(--color-accent-2)]"
+              className="mt-3 max-w-md rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]/60 px-4 py-2 text-center text-sm text-[var(--color-text)]/90 backdrop-blur-sm"
               dir="auto"
             >
               {interim || "…"}
@@ -187,7 +188,7 @@ export function AlphaChat() {
         </div>
       ) : (
         <div className="mb-2 flex justify-center md:mb-3">
-          <div className="w-[140px] md:w-[180px]">
+          <div className="w-[132px] md:w-[168px]">
             <SpeakingOrb mode={mode} level={level} />
           </div>
         </div>
@@ -202,7 +203,7 @@ export function AlphaChat() {
                 type="button"
                 onClick={() => void send(s)}
                 dir="auto"
-                className="border border-[var(--color-border)] bg-[var(--color-surface)]/50 px-4 py-3 text-left text-sm text-[var(--color-chrome)] hover:border-[var(--color-border-glow)]"
+                className="border border-white/[0.06] bg-white/[0.03] px-4 py-3.5 text-left text-sm text-[var(--color-chrome)] transition hover:border-[var(--color-border-glow)] hover:bg-white/[0.05]"
               >
                 {s}
               </button>
@@ -216,12 +217,12 @@ export function AlphaChat() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             dir="auto"
-            className={`max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed md:max-w-[85%] ${
+            className={`max-w-[92%] whitespace-pre-wrap px-4 py-3 text-[15px] leading-relaxed md:max-w-[82%] ${
               m.role === "user"
-                ? "ml-auto bg-[var(--color-accent)] text-[#05080f]"
+                ? "ml-auto border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/12 text-[var(--color-text)]"
                 : m.role === "assistant"
-                  ? "bg-[var(--color-surface)] text-[var(--color-text)]"
-                  : "bg-[var(--color-bg)] text-[var(--color-muted)]"
+                  ? "border border-white/[0.06] bg-[var(--color-surface)]/80 text-[var(--color-text)]"
+                  : "text-[var(--color-muted)]"
             }`}
           >
             {m.content}
@@ -278,9 +279,10 @@ export function AlphaChat() {
             onLevel={setLevel}
             onTranscript={(t) => {
               if (busyRef.current) return;
-              setText(t);
-              setInterim(t);
-              void send(t);
+              const cleaned = cleanVoiceTranscript(t);
+              setText(cleaned);
+              setInterim(cleaned);
+              void send(cleaned);
             }}
           />
           <textarea

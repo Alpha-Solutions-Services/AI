@@ -12,6 +12,10 @@ import {
   type ClientAction,
 } from "@/lib/alpha/tools/browser";
 import {
+  cleanVoiceTranscript,
+  isHearingCheck,
+} from "@/lib/alpha/voice-text";
+import {
   alphaGroqTools,
   createPendingToolRun,
   getAlphaTool,
@@ -70,6 +74,13 @@ export async function POST(req: NextRequest) {
       parsed = schema.parse(await req.json());
     } catch {
       return NextResponse.json({ error: "Invalid message" }, { status: 400 });
+    }
+    parsed = {
+      ...parsed,
+      message: cleanVoiceTranscript(parsed.message),
+    };
+    if (!parsed.message) {
+      return NextResponse.json({ error: "Empty message" }, { status: 400 });
     }
 
     const groq = getGroq();
@@ -163,6 +174,7 @@ export async function POST(req: NextRequest) {
     const ctx = { userId: session.user.id, email: session.user.email ?? null };
     let assistantText = "";
     let rounds = 0;
+    const skipTools = isHearingCheck(parsed.message);
 
     while (rounds < 2) {
       rounds += 1;
@@ -171,10 +183,11 @@ export async function POST(req: NextRequest) {
         completion = await groq.chat.completions.create({
           model: getGroqModel(),
           messages: messages as never,
-          tools: alphaGroqTools() as never,
-          tool_choice: "auto",
-          temperature: 0.3,
-          max_tokens: 1200,
+          ...(skipTools
+            ? {}
+            : { tools: alphaGroqTools() as never, tool_choice: "auto" as const }),
+          temperature: skipTools ? 0.5 : 0.3,
+          max_tokens: skipTools ? 400 : 1200,
         });
       } catch (err) {
         console.error("[alpha-chat] groq error", err);
@@ -187,8 +200,8 @@ export async function POST(req: NextRequest) {
               role: m.role === "assistant" ? "assistant" : m.role === "system" ? "system" : "user",
               content: m.content,
             })) as never,
-          temperature: 0.3,
-          max_tokens: 1200,
+          temperature: 0.4,
+          max_tokens: 800,
         });
         assistantText =
           plain.choices[0]?.message?.content ||

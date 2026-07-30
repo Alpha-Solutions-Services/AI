@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGroq, getWhisperModel } from "@/lib/alpha/groq";
+import { cleanVoiceTranscript } from "@/lib/alpha/voice-text";
 import { requireAlphaStaff } from "@/lib/staff/auth";
 
 export const dynamic = "force-dynamic";
@@ -23,11 +24,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "audio file required" }, { status: 400 });
   }
 
-  // No forced language — Whisper auto-detects English / Urdu / mixed.
   const transcription = await groq.audio.transcriptions.create({
     file,
     model: getWhisperModel(),
+    prompt:
+      "Alpha staff assistant voice note. Transcribe once in English or Urdu. Do not repeat phrases.",
   });
 
-  return NextResponse.json({ text: transcription.text });
+  const text = cleanVoiceTranscript(transcription.text || "");
+  return NextResponse.json({ text });
 }
