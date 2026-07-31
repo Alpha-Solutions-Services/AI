@@ -2,11 +2,13 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   BarChart3,
   FolderKanban,
   ListTodo,
   Network,
+  Orbit,
 } from "lucide-react";
 import { AlphaChat } from "@/components/alpha/AlphaChat";
 
@@ -31,9 +33,15 @@ function StubView({
         {title}
       </h2>
       <p className="max-w-md text-sm text-[var(--color-chrome)]">{blurb}</p>
-      <p className="text-[10px] uppercase tracking-[0.24em] text-[var(--color-gold)]">
-        Module online · linked to Alpha tools
+      <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--color-muted)]">
+        Coming soon — use chat or Universe for now
       </p>
+      <Link
+        href="/universe"
+        className="mt-2 inline-flex items-center gap-2 rounded-2xl border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/10 px-4 py-2.5 text-sm text-[var(--color-accent-2)]"
+      >
+        <Orbit size={16} /> Open Universe
+      </Link>
     </div>
   );
 }
@@ -45,7 +53,7 @@ function DashboardInner() {
       <StubView
         title="Tasks"
         icon={ListTodo}
-        blurb="Ask Alpha to list tickets, enrollments, or dispatcher queue — write actions still require confirm."
+        blurb="Ask Alpha to list tickets or the dispatcher queue. Dedicated task boards ship later."
       />
     );
   }
@@ -54,7 +62,7 @@ function DashboardInner() {
       <StubView
         title="Projects"
         icon={FolderKanban}
-        blurb="Search Portal CRM projects through chat, or say “open Portal admin in my browser.”"
+        blurb="Search Portal CRM projects through chat, or open Portal from Universe."
       />
     );
   }
@@ -63,7 +71,7 @@ function DashboardInner() {
       <StubView
         title="Integrations"
         icon={Network}
-        blurb="Portal · TMS · Learn Dispatch · Sanity · Groq · SMTP — managed via Alpha tools and env."
+        blurb="Portal · TMS · Learn Dispatch · Groq — connected via Alpha tools and env."
       />
     );
   }
@@ -72,7 +80,7 @@ function DashboardInner() {
       <StubView
         title="Analytics"
         icon={BarChart3}
-        blurb="Live ops metrics appear in the side HUD. Deeper reports ship in a later Alpha release."
+        blurb="Live counts live in Universe overview. Deeper reports ship in a later release."
       />
     );
   }
@@ -84,7 +92,7 @@ export function DashboardHome() {
     <Suspense
       fallback={
         <div className="flex h-full items-center justify-center text-sm text-[var(--color-muted)]">
-          Initializing Alpha core…
+          Initializing Alpha…
         </div>
       }
     >

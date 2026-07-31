@@ -5,46 +5,26 @@ import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import {
   Activity,
-  Bell,
+  BookOpen,
   Brain,
-  Calendar,
-  ChevronDown,
-  FileText,
   LayoutGrid,
   LogOut,
-  MessageSquare,
   Mic,
-  ListTodo,
+  Settings,
+  Truck,
 } from "lucide-react";
-import { MOCK_BADGE_COUNTS, MOCK_UNIVERSE_HEALTH } from "@/lib/universe/types";
-import { Sparkline } from "@/components/universe/UniverseCharts";
 import { createClient } from "@/lib/supabase/client";
+import { useUniverseOverview } from "@/components/universe/UniverseRightPanel";
 
 const NAV = [
-  { href: "/universe", label: "Universe", icon: LayoutGrid, exact: true },
-  { href: "/universe/intelligence", label: "AI Intelligence", icon: Brain },
-  {
-    href: "/universe#notifications",
-    label: "Notifications",
-    icon: Bell,
-    badge: "notifications" as const,
-  },
-  {
-    href: "/universe#messages",
-    label: "Messages",
-    icon: MessageSquare,
-    badge: "messages" as const,
-  },
-  {
-    href: "/universe#tasks",
-    label: "Tasks",
-    icon: ListTodo,
-    badge: "tasks" as const,
-  },
-  { href: "/universe#calendar", label: "Calendar", icon: Calendar },
-  { href: "/universe#activity", label: "Activity Feed", icon: Activity },
-  { href: "/universe/knowledge", label: "Documents", icon: FileText },
-  { href: "/universe#voice", label: "Voice Command", icon: Mic },
+  { href: "/universe", label: "Galaxy", icon: LayoutGrid, exact: true },
+  { href: "/universe/dispatch", label: "Dispatch", icon: Truck },
+  { href: "/universe/intelligence", label: "Intelligence", icon: Brain },
+  { href: "/universe/knowledge", label: "Knowledge", icon: BookOpen },
+  { href: "/universe#activity", label: "Activity", icon: Activity },
+  { href: "/universe#voice", label: "Voice", icon: Mic },
+  { href: "/universe/settings", label: "Settings", icon: Settings },
+  { href: "/", label: "Classic HUD", icon: Brain },
 ];
 
 export function UniverseSidebar({
@@ -58,8 +38,9 @@ export function UniverseSidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const badges = MOCK_BADGE_COUNTS; // TODO: replace with live counts
-  const health = MOCK_UNIVERSE_HEALTH;
+  const { data } = useUniverseOverview();
+  const health = data?.health;
+  const badges = data?.badges;
 
   async function signOut() {
     const supabase = createClient();
@@ -84,43 +65,43 @@ export function UniverseSidebar({
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-sky-100">Alpha AI</p>
               <p className="truncate text-[9px] uppercase tracking-[0.14em] text-slate-500">
-                Universe Operating System
+                Universe OS
               </p>
             </div>
           ) : null}
         </div>
       </div>
 
-      <button
-        type="button"
+      <div
         className={clsx(
           "mb-3 flex w-full items-center gap-2 rounded-xl border border-white/5 bg-white/[0.03] p-2 text-left",
           collapsed && "justify-center"
         )}
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-400/40 to-indigo-500/30 text-[11px] font-semibold text-white">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-500/25 text-[11px] font-semibold text-white">
           {(email?.[0] || "A").toUpperCase()}
         </span>
         {!collapsed ? (
-          <>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs text-slate-100">
-                {email?.split("@")[0] || "Alpha Admin"}
-              </span>
-              <span className="block text-[10px] text-slate-500">System Owner</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-xs text-slate-100">
+              {email?.split("@")[0] || "Staff"}
             </span>
-            <ChevronDown size={14} className="text-slate-500" />
-          </>
+            <span className="block text-[10px] text-slate-500">Staff</span>
+          </span>
         ) : null}
-      </button>
+      </div>
 
       <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pb-3">
         {NAV.map((item) => {
           const Icon = item.icon;
           const active = item.exact
             ? pathname === "/universe"
-            : pathname === item.href || pathname.startsWith(`${item.href}/`);
-          const count = item.badge ? badges[item.badge] : 0;
+            : item.href.startsWith("/universe/") &&
+              (pathname === item.href || pathname.startsWith(`${item.href}/`));
+          const count =
+            item.href.includes("activity") && badges
+              ? badges.notifications
+              : 0;
           return (
             <Link
               key={item.label}
@@ -151,20 +132,15 @@ export function UniverseSidebar({
         })}
       </nav>
 
-      {!collapsed ? (
+      {!collapsed && health ? (
         <div className="mb-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3">
           <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-400/90">
-            Universe Status
+            System status
           </p>
           <p className="mt-1 font-mono text-2xl text-emerald-300">
-            {health.percent.toFixed(1)}%
+            {health.percent.toFixed(0)}%
           </p>
           <p className="text-[10px] text-slate-400">{health.label}</p>
-          <Sparkline
-            points={health.sparkline}
-            stroke="#34d399"
-            className="mt-2 h-7 w-full"
-          />
         </div>
       ) : null}
 

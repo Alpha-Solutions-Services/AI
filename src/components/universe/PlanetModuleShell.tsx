@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import type { PlanetConfig } from "@/config/planets.config";
-import { MOCK_ACTIVITY, relativeTime } from "@/lib/universe/types";
+import { relativeTime } from "@/lib/universe/types";
 import { useUniverse } from "@/components/universe/UniverseProvider";
+import { useUniverseOverview } from "@/components/universe/UniverseRightPanel";
 
 export function PlanetModuleShell({
   planet,
@@ -21,10 +22,13 @@ export function PlanetModuleShell({
 }) {
   const router = useRouter();
   const { setActivePlanetId, resetCamera } = useUniverse();
-  const events = MOCK_ACTIVITY.filter((e) => e.planetId === planet.id).slice(
-    0,
-    5
+  const { data: overview } = useUniverseOverview();
+  const liveEvents = (overview?.activity || []).filter(
+    (e) => !e.planetId || e.planetId === planet.id
   );
+  const events = liveEvents.length
+    ? liveEvents.slice(0, 5)
+    : [];
 
   useEffect(() => {
     setActivePlanetId(planet.id);
@@ -90,17 +94,23 @@ export function PlanetModuleShell({
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
             Recent activity
           </p>
-          <ul className="mt-2 space-y-2">
-            {(events.length ? events : MOCK_ACTIVITY.slice(0, 3)).map((ev) => (
-              <li key={ev.id} className="text-[12px]">
-                <span className="font-medium text-slate-200">{ev.title}</span>
-                <span className="text-slate-500"> · {ev.detail}</span>
-                <span className="ml-2 text-[10px] text-slate-600">
-                  {relativeTime(ev.createdAt)}
-                </span>
-              </li>
-            ))}
-          </ul>
+          {events.length ? (
+            <ul className="mt-2 space-y-2">
+              {events.map((ev) => (
+                <li key={ev.id} className="text-[12px]">
+                  <span className="font-medium text-slate-200">{ev.title}</span>
+                  <span className="text-slate-500"> · {ev.detail}</span>
+                  <span className="ml-2 text-[10px] text-slate-600">
+                    {relativeTime(ev.createdAt)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-[12px] text-slate-500">
+              No recent tool activity for this planet yet.
+            </p>
+          )}
         </div>
 
         {primaryAction ? (

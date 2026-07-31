@@ -7,39 +7,24 @@ import { getPlanet } from "@/config/planets.config";
 import { PlanetModuleShell } from "@/components/universe/PlanetModuleShell";
 
 const METRICS: Record<string, Array<{ label: string; value: string }>> = {
-  dispatch: [
-    { label: "Active Loads", value: "Live" },
-    { label: "Drivers Online", value: "—" },
-    { label: "Queue", value: "Live" },
-  ],
-  "freight-sales": [
-    { label: "Pipeline Value", value: "$86,750" },
-    { label: "Active Leads", value: "152" },
-    { label: "Quotes Open", value: "23" },
-  ],
   portal: [
-    { label: "Open Tickets", value: "14" },
-    { label: "Projects", value: "31" },
-    { label: "Inquiries", value: "9" },
+    { label: "Source", value: "Portal tools" },
+    { label: "Module", value: "Placeholder" },
   ],
   "learn-academy": [
-    { label: "Live Sessions", value: "3" },
-    { label: "Enrollments", value: "128" },
-    { label: "Certificates", value: "64" },
+    { label: "Source", value: "Academy tools" },
+    { label: "Module", value: "Placeholder" },
   ],
   knowledge: [
-    { label: "Documents", value: "—" },
-    { label: "Chunks", value: "—" },
-    { label: "Crawl", value: "Ready" },
+    { label: "Source", value: "AI index" },
+    { label: "Module", value: "Placeholder" },
   ],
   intelligence: [
     { label: "Model", value: "Groq" },
     { label: "Tools", value: "Online" },
-    { label: "Voice", value: "EN · اردو" },
   ],
   settings: [
     { label: "TTS", value: "Browser" },
-    { label: "Staff", value: "Allowlist" },
     { label: "Auth", value: "Supabase" },
   ],
 };

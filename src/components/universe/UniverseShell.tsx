@@ -16,7 +16,7 @@ import { LiveClock } from "@/components/universe/LiveClock";
 import { UniverseSidebar } from "@/components/universe/UniverseSidebar";
 import { UniverseRightPanel } from "@/components/universe/UniverseRightPanel";
 import { CommandBar } from "@/components/universe/CommandBar";
-import { MOCK_BADGE_COUNTS } from "@/lib/universe/types";
+import { useUniverseOverview } from "@/components/universe/UniverseRightPanel";
 
 export function UniverseShell({
   children,
@@ -42,7 +42,8 @@ export function UniverseShell({
     setDrawer("none");
   }, [pathname]);
 
-  const badges = MOCK_BADGE_COUNTS;
+  const { data: overviewLive } = useUniverseOverview();
+  const badges = overviewLive?.badges ?? { notifications: 0, messages: 0, tasks: 0 };
 
   return (
     <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-[#030712] text-slate-100">

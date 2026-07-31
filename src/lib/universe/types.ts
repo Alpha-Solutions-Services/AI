@@ -42,7 +42,7 @@ export type UniverseHealth = {
   label: string;
   activeProcesses: number;
   /** sparkline points for status card */
-  sparkline: number[];
+  sparkline?: number[];
 };
 
 /** // TODO: replace with live metric from uptime / error-rate */

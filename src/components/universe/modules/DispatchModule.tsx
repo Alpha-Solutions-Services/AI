@@ -130,19 +130,24 @@ export default function DispatchModule() {
             </tr>
           </thead>
           <tbody>
-            {loads.length === 0 && !loading ? (
+            {loads.length === 0 && !loading && !error ? (
               <tr>
                 <td colSpan={3} className="px-3 py-6 text-center text-slate-500">
-                  No loads returned — check TMS tables / service role.
+                  No active loads in queue.
                 </td>
               </tr>
             ) : null}
             {loads.map((row, i) => {
               const id = String(row.id ?? row.reference ?? i);
-              const ref = String(row.reference ?? row.id ?? "—");
-              const origin = String(row.origin ?? row.from ?? "—");
-              const dest = String(row.destination ?? row.to ?? "—");
+              const ref = String(row.reference ?? row.load_number ?? row.id ?? "—");
+              const origin = String(
+                row.origin ?? row.origin_city ?? row.from ?? "—"
+              );
+              const dest = String(
+                row.destination ?? row.destination_city ?? row.to ?? "—"
+              );
               const status = String(row.status ?? "—");
+              const company = row.company ? String(row.company) : null;
               return (
                 <tr
                   key={id}
@@ -153,6 +158,11 @@ export default function DispatchModule() {
                       <Truck size={12} className="text-cyan-400" />
                       <span className="font-mono text-slate-100">{ref}</span>
                     </span>
+                    {company ? (
+                      <p className="mt-0.5 truncate text-[10px] text-slate-500">
+                        {company}
+                      </p>
+                    ) : null}
                   </td>
                   <td className="px-3 py-2 text-slate-400">
                     {origin} → {dest}

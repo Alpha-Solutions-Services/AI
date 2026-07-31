@@ -205,7 +205,7 @@ h6 {
   .svg-frame #out3 {
     animation: alpha-hud-spin 3s ease-in-out infinite alternate;
     transform-origin: center;
-    stroke: #ff0;
+    stroke: #fbbf24;
   }
 
   .svg-frame #inner3,
@@ -215,7 +215,7 @@ h6 {
   }
 
   .svg-frame #center1 {
-    fill: #ff0;
+    fill: #fbbf24;
     animation: alpha-hud-spin 2s ease-in-out infinite alternate;
     transform-origin: center;
   }

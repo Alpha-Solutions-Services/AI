@@ -9,8 +9,8 @@ import { AlphaStar } from "@/components/universe/AlphaStar";
 import { AgentSatellites } from "@/components/universe/AgentSatellites";
 import { CommandBar } from "@/components/universe/CommandBar";
 import { ProgressRing } from "@/components/universe/UniverseCharts";
-import { MOCK_UNIVERSE_HEALTH } from "@/lib/universe/types";
 import { useUniverse } from "@/components/universe/UniverseProvider";
+import { useUniverseOverview } from "@/components/universe/UniverseRightPanel";
 
 /**
  * 2.5D orbital diagram (CSS + Framer Motion).
@@ -106,7 +106,12 @@ export function GalaxyView() {
     beamPlanetId,
     setBeamPlanetId,
   } = useUniverse();
-  const health = MOCK_UNIVERSE_HEALTH;
+  const { data: overviewData } = useUniverseOverview();
+  const health = {
+    percent: overviewData?.health.percent ?? 0,
+    activeProcesses: overviewData?.health.activeProcesses ?? 0,
+    label: overviewData?.health.label ?? "Loading…",
+  };
   const reduce = useReducedMotion();
 
   const layout = useMemo(() => {
@@ -156,7 +161,7 @@ export function GalaxyView() {
           </p>
           <p className="flex items-center gap-1 text-[11px] text-slate-200 sm:text-xs">
             <TrendingUp size={12} className="text-emerald-400" />
-            Active {health.activeProcesses}
+            {health.label}
           </p>
         </div>
       </div>
