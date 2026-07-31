@@ -53,6 +53,7 @@ export function VoiceDock({
   onListeningChange,
   onLevel,
   onBargeIn,
+  agentSpeaking = false,
 }: {
   disabled?: boolean;
   speakEnabled: boolean;
@@ -63,6 +64,8 @@ export function VoiceDock({
   onLevel?: (level: number) => void;
   /** Fired when user starts speaking — stop TTS so live talk feels instant */
   onBargeIn?: () => void;
+  /** True while Alpha TTS is playing — ignore mic feedback so replies aren't cut off */
+  agentSpeaking?: boolean;
 }) {
   const [live, setLive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -71,6 +74,7 @@ export function VoiceDock({
 
   const liveRef = useRef(false);
   const disabledRef = useRef(!!disabled);
+  const agentSpeakingRef = useRef(agentSpeaking);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const lastSentRef = useRef("");
   const lastSentAtRef = useRef(0);
@@ -93,6 +97,18 @@ export function VoiceDock({
   useEffect(() => {
     disabledRef.current = !!disabled;
   }, [disabled]);
+
+  useEffect(() => {
+    agentSpeakingRef.current = agentSpeaking;
+    // Pause recognition while Alpha talks so speakers don't cancel TTS
+    if (agentSpeaking && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [agentSpeaking]);
 
   useEffect(() => {
     onBargeInRef.current = onBargeIn;
@@ -173,6 +189,8 @@ export function VoiceDock({
   }
 
   function signalBargeIn() {
+    // Don't treat Alpha's own speaker output as user barge-in
+    if (agentSpeakingRef.current) return;
     if (bargedRef.current) return;
     bargedRef.current = true;
     onBargeInRef.current?.();
@@ -181,6 +199,7 @@ export function VoiceDock({
   function emitTranscript(text: string) {
     const cleaned = text.trim();
     if (!cleaned || cleaned.length < 2) return;
+    if (agentSpeakingRef.current) return;
     // Drop while a reply is still generating — keep mic hot, retry soon via pause flush
     if (disabledRef.current) return;
     const now = Date.now();
@@ -282,17 +301,22 @@ export function VoiceDock({
     };
 
     recognition.onend = () => {
-      // Keep live session alive until user turns it off — restart immediately
+      // Keep live session alive — wait while Alpha is speaking so TTS isn't interrupted
       if (liveRef.current) {
         if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
-        restartTimerRef.current = setTimeout(() => {
+        const wait = () => {
           if (!liveRef.current) return;
+          if (agentSpeakingRef.current || disabledRef.current) {
+            restartTimerRef.current = setTimeout(wait, 400);
+            return;
+          }
           try {
             recognition.start();
           } catch {
             /* already started */
           }
-        }, 80);
+        };
+        restartTimerRef.current = setTimeout(wait, 120);
       }
     };
 
@@ -560,38 +584,62 @@ export function speakText(
     opts?.onEnd?.();
     return;
   }
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text.slice(0, 1600));
-  utter.rate = 1.08;
-  utter.pitch = 0.95;
-  const voices = window.speechSynthesis.getVoices();
-  const wantUrdu = hasUrduScript(text);
-  const preferred = wantUrdu
-    ? voices.find((v) => /ur|pak|hindi|india/i.test(`${v.lang} ${v.name}`)) ||
-      voices.find((v) => v.lang.startsWith("ur"))
-    : voices.find((v) => /en-GB|Daniel|Google UK/i.test(v.name)) ||
-      voices.find((v) => v.lang.startsWith("en"));
-  if (preferred) utter.voice = preferred;
-  if (wantUrdu) utter.lang = preferred?.lang || "ur-PK";
 
-  const len = Math.max(1, text.length);
-  utter.onboundary = (ev) => {
-    const charIndex = typeof ev.charIndex === "number" ? ev.charIndex : 0;
-    opts?.onBoundary?.(Math.min(1, charIndex / len));
+  const speakNow = () => {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text.slice(0, 1600));
+    utter.rate = 1.05;
+    utter.pitch = 0.95;
+    const voices = window.speechSynthesis.getVoices();
+    const wantUrdu = hasUrduScript(text);
+    const preferred = wantUrdu
+      ? voices.find((v) => /ur|pak|hindi|india/i.test(`${v.lang} ${v.name}`)) ||
+        voices.find((v) => v.lang.startsWith("ur"))
+      : voices.find((v) => /en-GB|Daniel|Google UK|Samantha|Jenny/i.test(v.name)) ||
+        voices.find((v) => v.lang.startsWith("en"));
+    if (preferred) utter.voice = preferred;
+    if (wantUrdu) utter.lang = preferred?.lang || "ur-PK";
+    else utter.lang = preferred?.lang || "en-US";
+
+    const len = Math.max(1, text.length);
+    utter.onboundary = (ev) => {
+      const charIndex = typeof ev.charIndex === "number" ? ev.charIndex : 0;
+      opts?.onBoundary?.(Math.min(1, charIndex / len));
+    };
+    utter.onstart = () => {
+      opts?.onStart?.();
+      opts?.onBoundary?.(0.15);
+    };
+    utter.onend = () => {
+      opts?.onBoundary?.(0);
+      opts?.onEnd?.();
+    };
+    utter.onerror = () => {
+      opts?.onBoundary?.(0);
+      opts?.onEnd?.();
+    };
+    // Small delay after cancel so Chrome actually speaks
+    setTimeout(() => {
+      try {
+        window.speechSynthesis.speak(utter);
+      } catch {
+        opts?.onEnd?.();
+      }
+    }, 60);
   };
-  utter.onstart = () => {
-    opts?.onStart?.();
-    opts?.onBoundary?.(0.15);
-  };
-  utter.onend = () => {
-    opts?.onBoundary?.(0);
-    opts?.onEnd?.();
-  };
-  utter.onerror = () => {
-    opts?.onBoundary?.(0);
-    opts?.onEnd?.();
-  };
-  window.speechSynthesis.speak(utter);
+
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) {
+    const onVoices = () => {
+      window.speechSynthesis.removeEventListener("voiceschanged", onVoices);
+      speakNow();
+    };
+    window.speechSynthesis.addEventListener("voiceschanged", onVoices);
+    // Fallback if voiceschanged never fires
+    setTimeout(speakNow, 250);
+  } else {
+    speakNow();
+  }
 }
 
 export function stopSpeaking() {

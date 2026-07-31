@@ -1,122 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import clsx from "clsx";
 
 type Mode = "idle" | "listening" | "thinking" | "speaking";
 
-type Vec3 = { x: number; y: number; z: number };
-
-type Particle = {
-  kind: "globe" | "letter" | "ring" | "dust";
-  base: Vec3;
-  size: number;
-  phase: number;
-  bright: number;
-};
-
-const FOV = 2.6;
-const GLOBE_R = 1;
-
-function fibonacciSphere(count: number, radius: number): Vec3[] {
-  const pts: Vec3[] = [];
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  for (let i = 0; i < count; i++) {
-    const y = 1 - (i / Math.max(1, count - 1)) * 2;
-    const r = Math.sqrt(Math.max(0, 1 - y * y));
-    const theta = golden * i;
-    pts.push({
-      x: Math.cos(theta) * r * radius,
-      y: y * radius,
-      z: Math.sin(theta) * r * radius,
-    });
-  }
-  return pts;
-}
-
-function sampleRing(count: number, radius: number, tilt: number): Vec3[] {
-  const pts: Vec3[] = [];
-  for (let i = 0; i < count; i++) {
-    const a = (i / count) * Math.PI * 2;
-    const x = Math.cos(a) * radius;
-    const z = Math.sin(a) * radius;
-    const y = 0;
-    // tilt around X
-    pts.push({
-      x,
-      y: y * Math.cos(tilt) - z * Math.sin(tilt),
-      z: y * Math.sin(tilt) + z * Math.cos(tilt),
-    });
-  }
-  return pts;
-}
-
-/** Thick 3D letter A — extruded volumetric ribbons with real depth. */
-function sampleLetterA3D(): Vec3[] {
-  const pts: Vec3[] = [];
-  const left = (t: number, ox: number, oz: number) => ({
-    x: -0.48 + t * 0.48 + ox,
-    y: 0.58 - t * 1.16,
-    z: oz,
-  });
-  const right = (t: number, ox: number, oz: number) => ({
-    x: 0.48 - t * 0.48 + ox,
-    y: 0.58 - t * 1.16,
-    z: oz,
-  });
-  const bar = (t: number, oy: number, oz: number) => ({
-    x: -0.28 + t * 0.56,
-    y: 0.06 + oy,
-    z: oz,
-  });
-
-  // Wider extrusion = thicker premium strokes
-  const depthLayers = [-0.18, -0.12, -0.06, 0, 0.06, 0.12, 0.18];
-  const strokeW = [-0.08, -0.055, -0.03, -0.01, 0.01, 0.03, 0.055, 0.08];
-  const n = 36;
-
-  for (const oz of depthLayers) {
-    for (const ox of strokeW) {
-      for (let i = 0; i < n; i++) {
-        const t = i / (n - 1);
-        pts.push(left(t, ox * 0.75, oz));
-        pts.push(right(t, ox * 0.75, oz));
-      }
-    }
-    for (const oy of [-0.06, -0.04, -0.02, 0, 0.02, 0.04, 0.06]) {
-      for (let i = 0; i < 28; i++) {
-        pts.push(bar(i / 27, oy, oz));
-      }
-    }
-  }
-  return pts;
-}
-
-function rotateY(p: Vec3, a: number): Vec3 {
-  const c = Math.cos(a);
-  const s = Math.sin(a);
-  return { x: p.x * c - p.z * s, y: p.y, z: p.x * s + p.z * c };
-}
-
-function rotateX(p: Vec3, a: number): Vec3 {
-  const c = Math.cos(a);
-  const s = Math.sin(a);
-  return { x: p.x, y: p.y * c - p.z * s, z: p.y * s + p.z * c };
-}
-
-function project(p: Vec3, scale: number, cx: number, cy: number) {
-  const z = p.z + FOV;
-  const persp = FOV / Math.max(0.35, z);
-  return {
-    x: cx + p.x * scale * persp,
-    y: cy + p.y * scale * persp,
-    depth: persp,
-    z: p.z,
-  };
-}
-
 /**
- * 3D AI particle globe with volumetric holographic Alpha A.
- * Inspired by premium particle-sphere / holographic orb aesthetics.
+ * Uiverse HUD core (Nawsome) — expands when Alpha is speaking;
+ * stays compact otherwise with gentle ring motion.
  */
 export function SpeakingOrb({
   mode = "idle",
@@ -127,384 +17,131 @@ export function SpeakingOrb({
   level?: number;
   className?: string;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const modeRef = useRef(mode);
-  const levelRef = useRef(level);
-
-  useEffect(() => {
-    modeRef.current = mode;
-  }, [mode]);
-  useEffect(() => {
-    levelRef.current = level;
-  }, [level]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const c = ctx;
-
-    let raf = 0;
-    let t = 0;
-    let particles: Particle[] = [];
-    let w = 0;
-    let h = 0;
-    let scale = 1;
-
-    const build = () => {
-      const globe = fibonacciSphere(780, GLOBE_R).map((base, i) => ({
-        kind: "globe" as const,
-        base,
-        size: 0.55 + (i % 5) * 0.08,
-        phase: Math.random() * Math.PI * 2,
-        bright: 0.28 + Math.random() * 0.32,
-      }));
-
-      const letter = sampleLetterA3D().map((base, i) => ({
-        kind: "letter" as const,
-        base: {
-          x: base.x * 0.88,
-          y: base.y * 0.88,
-          z: base.z * 0.88,
-        },
-        size: 0.95 + (i % 4) * 0.12,
-        phase: Math.random() * Math.PI * 2,
-        bright: 0.8 + Math.random() * 0.2,
-      }));
-
-      const rings = [
-        ...sampleRing(96, 1.2, 0.58),
-        ...sampleRing(84, 1.36, -0.42),
-        ...sampleRing(72, 1.5, 0.28),
-      ].map((base, i) => ({
-        kind: "ring" as const,
-        base,
-        size: 0.55,
-        phase: Math.random() * Math.PI * 2,
-        bright: 0.38 + (i % 3) * 0.1,
-      }));
-
-      const dust = Array.from({ length: 48 }, (_, i) => {
-        const a = Math.random() * Math.PI * 2;
-        const b = Math.acos(2 * Math.random() - 1);
-        const r = 1.65 + Math.random() * 0.35;
-        return {
-          kind: "dust" as const,
-          base: {
-            x: r * Math.sin(b) * Math.cos(a),
-            y: r * Math.cos(b),
-            z: r * Math.sin(b) * Math.sin(a),
-          },
-          size: 0.45,
-          phase: Math.random() * Math.PI * 2,
-          bright: 0.2,
-        };
-      });
-
-      particles = [...globe, ...letter, ...rings, ...dust];
-    };
-
-    const resize = () => {
-      const parent = canvas.parentElement;
-      const css = Math.min(
-        parent?.clientWidth || 340,
-        parent?.clientHeight || 340,
-        420
-      );
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      w = css;
-      h = css;
-      canvas.width = css * dpr;
-      canvas.height = css * dpr;
-      canvas.style.width = `${css}px`;
-      canvas.style.height = `${css}px`;
-      c.setTransform(dpr, 0, 0, dpr, 0, 0);
-      scale = css * 0.28;
-      build();
-    };
-
-    resize();
-    const ro = new ResizeObserver(resize);
-    if (canvas.parentElement) ro.observe(canvas.parentElement);
-
-    const draw = () => {
-      t += 1;
-      const modeNow = modeRef.current;
-      const lvl = Math.max(0, Math.min(1, levelRef.current));
-      const energy =
-        modeNow === "speaking"
-          ? 0.32 + lvl * 0.68
-          : modeNow === "listening"
-            ? 0.26 + lvl * 0.5
-            : modeNow === "thinking"
-              ? 0.28 + Math.sin(t * 0.08) * 0.1
-              : 0.14;
-
-      const spinY =
-        t *
-        (modeNow === "idle"
-          ? 0.0045
-          : modeNow === "listening"
-            ? 0.007
-            : modeNow === "speaking"
-              ? 0.01
-              : 0.008);
-      const spinX = 0.38 + Math.sin(t * 0.004) * 0.05;
-
-      c.clearRect(0, 0, w, h);
-      const cx = w / 2;
-      const cy = h / 2 + scale * 0.02;
-
-      // Atmospheric shell
-      const shell = c.createRadialGradient(cx, cy, scale * 0.2, cx, cy, scale * 1.55);
-      shell.addColorStop(0, `rgba(56, 189, 248, ${0.08 + energy * 0.1})`);
-      shell.addColorStop(0.55, `rgba(14, 165, 233, ${0.04 + energy * 0.04})`);
-      shell.addColorStop(1, "rgba(3, 7, 18, 0)");
-      c.fillStyle = shell;
-      c.beginPath();
-      c.arc(cx, cy, scale * 1.55, 0, Math.PI * 2);
-      c.fill();
-
-      // Soft pedestal
-      const ped = c.createRadialGradient(
-        cx,
-        cy + scale * 1.25,
-        1,
-        cx,
-        cy + scale * 1.25,
-        scale * 0.85
-      );
-      ped.addColorStop(0, `rgba(56, 189, 248, ${0.22 + energy * 0.16})`);
-      ped.addColorStop(1, "rgba(56, 189, 248, 0)");
-      c.fillStyle = ped;
-      c.beginPath();
-      c.ellipse(cx, cy + scale * 1.28, scale * 0.72, scale * 0.12, 0, 0, Math.PI * 2);
-      c.fill();
-
-      // Luminous core
-      const core = c.createRadialGradient(cx, cy, 1, cx, cy, scale * 0.55);
-      core.addColorStop(0, `rgba(240, 249, 255, ${0.18 + energy * 0.2})`);
-      core.addColorStop(0.35, `rgba(56, 189, 248, ${0.12 + energy * 0.12})`);
-      core.addColorStop(1, "rgba(56, 189, 248, 0)");
-      c.fillStyle = core;
-      c.beginPath();
-      c.arc(cx, cy, scale * 0.55, 0, Math.PI * 2);
-      c.fill();
-
-      type Projected = {
-        p: Particle;
-        sx: number;
-        sy: number;
-        depth: number;
-        z: number;
-      };
-      const projected: Projected[] = [];
-
-      for (const p of particles) {
-        let pos = p.base;
-        // subtle breathing on globe
-        if (p.kind === "globe") {
-          const breathe =
-            1 + Math.sin(t * 0.03 + p.phase) * (0.012 + energy * 0.02);
-          pos = {
-            x: pos.x * breathe,
-            y: pos.y * breathe,
-            z: pos.z * breathe,
-          };
-        }
-        if (p.kind === "letter") {
-          const pulse =
-            1 + Math.sin(t * 0.05 + p.phase) * (0.01 + energy * 0.025);
-          pos = {
-            x: pos.x * pulse,
-            y: pos.y * pulse,
-            z: pos.z * pulse,
-          };
-        }
-
-        pos = rotateY(pos, spinY);
-        pos = rotateX(pos, spinX);
-        const pr = project(pos, scale, cx, cy);
-        projected.push({
-          p,
-          sx: pr.x,
-          sy: pr.y,
-          depth: pr.depth,
-          z: pr.z,
-        });
-      }
-
-      // Back-to-front for proper occlusion feel
-      projected.sort((a, b) => a.z - b.z);
-
-      // Continuous thick A ribbons (volumetric glow under particles)
-      c.save();
-      c.lineCap = "round";
-      c.lineJoin = "round";
-      const aDepths = [-0.16, -0.08, 0, 0.08, 0.16];
-      const aWidths = [-0.06, 0, 0.06];
-      for (const oz of aDepths) {
-        for (const ox of aWidths) {
-          const leftPts: { x: number; y: number; z: number }[] = [];
-          const rightPts: { x: number; y: number; z: number }[] = [];
-          const barPts: { x: number; y: number; z: number }[] = [];
-          for (let i = 0; i <= 24; i++) {
-            const t = i / 24;
-            let lp = {
-              x: (-0.48 + t * 0.48 + ox * 0.75) * 0.88,
-              y: (0.58 - t * 1.16) * 0.88,
-              z: oz * 0.88,
-            };
-            let rp = {
-              x: (0.48 - t * 0.48 + ox * 0.75) * 0.88,
-              y: (0.58 - t * 1.16) * 0.88,
-              z: oz * 0.88,
-            };
-            lp = rotateY(lp, spinY);
-            lp = rotateX(lp, spinX);
-            rp = rotateY(rp, spinY);
-            rp = rotateX(rp, spinX);
-            leftPts.push(lp);
-            rightPts.push(rp);
-          }
-          for (let i = 0; i <= 18; i++) {
-            const t = i / 18;
-            let bp = {
-              x: (-0.28 + t * 0.56) * 0.88,
-              y: (0.06 + ox * 0.5) * 0.88,
-              z: oz * 0.88,
-            };
-            bp = rotateY(bp, spinY);
-            bp = rotateX(bp, spinX);
-            barPts.push(bp);
-          }
-
-          const strokePath = (pts: Vec3[], width: number, alpha: number) => {
-            if (pts.length < 2) return;
-            c.beginPath();
-            const first = project(pts[0], scale, cx, cy);
-            c.moveTo(first.x, first.y);
-            for (let i = 1; i < pts.length; i++) {
-              const pr = project(pts[i], scale, cx, cy);
-              c.lineTo(pr.x, pr.y);
-            }
-            const midZ = pts[Math.floor(pts.length / 2)].z;
-            const fade = 0.35 + ((midZ + 1.2) / 2.4) * 0.65;
-            c.strokeStyle = `rgba(125, 211, 252, ${alpha * fade})`;
-            c.lineWidth = width * (0.85 + energy * 0.3);
-            c.shadowColor = "rgba(56, 189, 248, 0.55)";
-            c.shadowBlur = 10;
-            c.stroke();
-          };
-
-          strokePath(leftPts, scale * 0.085, 0.35 + energy * 0.2);
-          strokePath(rightPts, scale * 0.085, 0.35 + energy * 0.2);
-          strokePath(barPts, scale * 0.075, 0.32 + energy * 0.18);
-        }
-      }
-      c.shadowBlur = 0;
-      c.restore();
-
-      // Sparse network links on front hemisphere (AI globe look)
-      c.save();
-      c.lineWidth = 0.6;
-      for (let i = 0; i < projected.length; i++) {
-        const a = projected[i];
-        if (a.p.kind !== "globe" || a.z < -0.15) continue;
-        if (i % 7 !== 0) continue;
-        let links = 0;
-        for (let j = i + 1; j < projected.length && links < 2; j++) {
-          const b = projected[j];
-          if (b.p.kind !== "globe") continue;
-          const dx = a.sx - b.sx;
-          const dy = a.sy - b.sy;
-          const dist = Math.hypot(dx, dy);
-          if (dist < scale * 0.22 && dist > 2) {
-            const alpha = (0.08 + energy * 0.08) * Math.min(a.depth, b.depth);
-            c.strokeStyle = `rgba(125, 211, 252, ${alpha})`;
-            c.beginPath();
-            c.moveTo(a.sx, a.sy);
-            c.lineTo(b.sx, b.sy);
-            c.stroke();
-            links++;
-          }
-        }
-      }
-      c.restore();
-
-      for (const item of projected) {
-        const { p, sx, sy, depth, z } = item;
-        const front = (z + 1.2) / 2.4; // 0 back → 1 front
-        const depthFade = 0.25 + front * 0.75;
-
-        let alpha = p.bright * depthFade;
-        let color = "125, 211, 252";
-        let r = p.size * depth * (0.7 + energy * 0.25);
-
-        if (p.kind === "letter") {
-          color = "240, 249, 255";
-          alpha = Math.min(1, (0.62 + energy * 0.35) * depthFade);
-          r = p.size * depth * (1.05 + energy * 0.28);
-          // soft bloom — denser smaller dots read smoother
-          const g = c.createRadialGradient(sx, sy, 0, sx, sy, r * 2.6);
-          g.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.9})`);
-          g.addColorStop(0.45, `rgba(56, 189, 248, ${alpha * 0.32})`);
-          g.addColorStop(1, "rgba(56, 189, 248, 0)");
-          c.fillStyle = g;
-          c.beginPath();
-          c.arc(sx, sy, r * 2.6, 0, Math.PI * 2);
-          c.fill();
-        } else if (p.kind === "globe") {
-          color = front > 0.55 ? "186, 230, 253" : "56, 189, 248";
-          alpha *= 0.5 + energy * 0.32;
-          r *= 0.72;
-        } else if (p.kind === "ring") {
-          color = "125, 211, 252";
-          alpha *= 0.42 + energy * 0.22;
-          r *= 0.62;
-        } else {
-          alpha *= 0.32;
-          r *= 0.5;
-        }
-
-        c.beginPath();
-        c.fillStyle = `rgba(${color}, ${Math.min(1, alpha)})`;
-        c.arc(sx, sy, Math.max(0.4, r), 0, Math.PI * 2);
-        c.fill();
-      }
-
-      // Thin glass rim
-      c.beginPath();
-      c.strokeStyle = `rgba(186, 230, 253, ${0.12 + energy * 0.1})`;
-      c.lineWidth = 1.2;
-      c.arc(cx, cy, scale * 1.05, 0, Math.PI * 2);
-      c.stroke();
-
-      raf = requestAnimationFrame(draw);
-    };
-
-    raf = requestAnimationFrame(draw);
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
-  }, []);
+  const speaking = mode === "speaking";
+  const active = mode === "listening" || mode === "thinking" || speaking;
 
   return (
     <div
-      className={`relative mx-auto flex aspect-square w-full max-w-[min(74vw,360px)] items-center justify-center ${className}`}
+      className={clsx(
+        "relative mx-auto flex items-center justify-center",
+        className
+      )}
       aria-hidden
+      style={{
+        transform: speaking
+          ? `scale(${1.08 + level * 0.12})`
+          : active
+            ? `scale(${1.02 + level * 0.04})`
+            : "scale(1)",
+        transition: "transform 0.45s ease",
+      }}
     >
       <div
-        className="pointer-events-none absolute inset-[8%] rounded-full bg-[radial-gradient(circle,_rgba(56,189,248,0.18),_transparent_70%)] blur-2xl"
-        style={{ opacity: mode === "idle" ? 0.55 : 0.9 }}
-      />
-      <div
-        className="pointer-events-none absolute bottom-[4%] left-1/2 h-[16%] w-[56%] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(ellipse_at_center,_rgba(56,189,248,0.38),_transparent_72%)] blur-md"
-        style={{ opacity: mode === "idle" ? 0.5 : 0.85 }}
-      />
-      <canvas ref={canvasRef} className="relative z-10 h-full w-full" />
+        className={clsx(
+          "svg-frame",
+          speaking && "is-speaking",
+          mode === "listening" && "is-listening",
+          mode === "thinking" && "is-thinking"
+        )}
+      >
+        <svg style={{ ["--i" as string]: 0, ["--j" as string]: 0 }}>
+          <g id="out1">
+            <path d="M72 172C72 116.772 116.772 72 172 72C227.228 72 272 116.772 272 172C272 227.228 227.228 272 172 272C116.772 272 72 227.228 72 172ZM197.322 172C197.322 158.015 185.985 146.678 172 146.678C158.015 146.678 146.678 158.015 146.678 172C146.678 185.985 158.015 197.322 172 197.322C185.985 197.322 197.322 185.985 197.322 172Z" />
+            <path
+              mask="url(#path-1-inside-1_alpha)"
+              strokeMiterlimit={16}
+              strokeWidth={2}
+              stroke="#00FFFF"
+              d="M72 172C72 116.772 116.772 72 172 72C227.228 72 272 116.772 272 172C272 227.228 227.228 272 172 272C116.772 272 72 227.228 72 172ZM197.322 172C197.322 158.015 185.985 146.678 172 146.678C158.015 146.678 146.678 158.015 146.678 172C146.678 185.985 158.015 197.322 172 197.322C185.985 197.322 197.322 185.985 197.322 172Z"
+            />
+          </g>
+        </svg>
+
+        <svg style={{ ["--i" as string]: 1, ["--j" as string]: 1 }}>
+          <g id="out2">
+            <path
+              fill="#00FFFF"
+              d="M102.892 127.966C93.3733 142.905 88.9517 160.527 90.2897 178.19L94.3752 177.88C93.1041 161.1 97.3046 144.36 106.347 130.168L102.892 127.966Z"
+            />
+            <path
+              fill="#00FFFF"
+              d="M93.3401 194.968C98.3049 211.971 108.646 226.908 122.814 237.541L125.273 234.264C111.814 224.163 101.99 209.973 97.2731 193.819L93.3401 194.968Z"
+            />
+            <path
+              fill="#00FFFF"
+              d="M152.707 92.3592C140.33 95.3575 128.822 101.199 119.097 109.421L121.742 112.55C130.981 104.739 141.914 99.1897 153.672 96.3413L152.707 92.3592Z"
+            />
+            <path
+              fill="#00FFFF"
+              d="M253.294 161.699C255.099 175.937 253.132 190.4 247.59 203.639L243.811 202.057C249.075 189.48 250.944 175.74 249.23 162.214L253.294 161.699Z"
+            />
+            <path
+              fill="#00FFFF"
+              d="M172 90.0557C184.677 90.0557 197.18 92.9967 208.528 98.6474C219.875 104.298 229.757 112.505 237.396 122.621L234.126 125.09C226.869 115.479 217.481 107.683 206.701 102.315C195.921 96.9469 184.043 94.1529 172 94.1529V90.0557Z"
+            />
+            <path
+              fill="#00FFFF"
+              d="M244.195 133.235C246.991 138.442 249.216 143.937 250.83 149.623L246.888 150.742C245.355 145.34 243.242 140.12 240.586 135.174L244.195 133.235Z"
+            />
+            <path
+              fill="#00FFFF"
+              d="M234.238 225.304C223.932 237.338 210.358 246.126 195.159 250.604C179.961 255.082 163.79 255.058 148.606 250.534L149.775 246.607C164.201 250.905 179.563 250.928 194.001 246.674C208.44 242.42 221.335 234.071 231.126 222.639L234.238 225.304Z"
+            />
+          </g>
+        </svg>
+
+        <svg style={{ ["--i" as string]: 0, ["--j" as string]: 2 }}>
+          <g id="inner3">
+            <path
+              fill="#00FFFF"
+              d="M195.136 135.689C188.115 131.215 179.948 128.873 171.624 128.946C163.299 129.019 155.174 131.503 148.232 136.099L150.2 139.2C156.4 135.2 163.8 133.1 171.5 133.1C179.2 133.1 186.5 135.3 192.7 139.3L195.136 135.689Z"
+              opacity={0.9}
+            />
+            <path
+              fill="#00FFFF"
+              d="M195.136 208.311C188.115 212.784 179.948 215.127 171.624 215.054C163.299 214.981 155.174 212.496 148.232 207.901L150.2 204.8C156.4 208.8 163.8 210.9 171.5 210.9C179.2 210.9 186.5 208.7 192.7 204.7L195.136 208.311Z"
+              opacity={0.9}
+            />
+          </g>
+          <path
+            stroke="#00FFFF"
+            fill="none"
+            strokeWidth={1.5}
+            d="M240.944 172C240.944 187.951 235.414 203.408 225.295 215.738C215.176 228.068 201.095 236.508 185.45 239.62C169.806 242.732 153.567 240.323 139.5 232.804C125.433 225.285 114.408 213.12 108.304 198.384C102.2 183.648 101.394 167.25 106.024 151.987C110.654 136.723 120.434 123.537 133.696 114.675C146.959 105.813 162.884 101.824 178.758 103.388C194.632 104.951 209.472 111.97 220.751 123.249"
+            id="out3"
+          />
+        </svg>
+
+        <svg style={{ ["--i" as string]: 1, ["--j" as string]: 3 }}>
+          <g id="inner1">
+            <path
+              fill="#00FFFF"
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M145.949 124.51L148.554 129.259C156.575 124.859 165.672 122.804 174.806 123.331C183.94 123.858 192.741 126.944 200.203 132.236C207.665 137.529 213.488 144.815 217.004 153.261C220.521 161.707 221.59 170.972 220.09 179.997L224.108 180.665L229.537 181.607C230.521 175.715 230.594 169.708 229.753 163.795L225.628 164.381C224.987 159.867 223.775 155.429 222.005 151.179C218.097 141.795 211.628 133.699 203.337 127.818C195.045 121.937 185.266 118.508 175.118 117.923C165.302 117.357 155.525 119.474 146.83 124.037C146.535 124.192 146.241 124.349 145.949 124.51Z"
+            />
+            <path
+              fill="#00FFFF"
+              fillRule="evenodd"
+              clipRule="evenodd"
+              d="M139.91 220.713C134.922 217.428 130.469 213.395 126.705 208.758L130.983 205.286L134.148 202.721C141.342 211.584 151.417 217.642 162.619 219.839C173.821 222.036 185.438 220.232 195.446 214.742L198.051 219.491C197.759 219.651 197.465 219.809 197.17 219.963C186.252 225.693 173.696 227.531 161.577 225.154C154.613 223.789 148.041 221.08 142.202 217.234L139.91 220.713Z"
+            />
+          </g>
+        </svg>
+
+        <svg style={{ ["--i" as string]: 2, ["--j" as string]: 4 }}>
+          <path
+            fill="#FFD54F"
+            d="M180.956 186.056C183.849 184.212 186.103 181.521 187.41 178.349C188.717 175.177 189.013 171.679 188.258 168.332C187.503 164.986 185.734 161.954 183.192 159.65C180.649 157.346 177.458 155.883 174.054 155.46C170.649 155.038 167.197 155.676 164.169 157.288C161.14 158.9 158.683 161.407 157.133 164.468C155.582 167.528 155.014 170.992 155.505 174.388C155.997 177.783 157.524 180.944 159.879 183.439L161.129 182.259C159.018 180.021 157.648 177.186 157.207 174.141C156.766 171.096 157.276 167.989 158.667 165.245C160.057 162.5 162.261 160.252 164.977 158.806C167.693 157.36 170.788 156.788 173.842 157.167C176.895 157.546 179.757 158.858 182.037 160.924C184.317 162.99 185.904 165.709 186.581 168.711C187.258 171.712 186.992 174.849 185.82 177.694C184.648 180.539 182.627 182.952 180.032 184.606L180.956 186.056Z"
+            id="center1"
+          />
+          <path
+            fill="#00FFFF"
+            d="M172 166.445C175.068 166.445 177.556 168.932 177.556 172C177.556 175.068 175.068 177.556 172 177.556C168.932 177.556 166.444 175.068 166.444 172C166.444 168.932 168.932 166.445 172 166.445ZM172 177.021C174.773 177.021 177.021 174.773 177.021 172C177.021 169.227 174.773 166.979 172 166.979C169.227 166.979 166.979 169.227 166.979 172C166.979 174.773 169.227 177.021 172 177.021Z"
+            id="center"
+          />
+        </svg>
+      </div>
     </div>
   );
 }

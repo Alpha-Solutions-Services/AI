@@ -151,4 +151,83 @@ h6 {
       radial-gradient(ellipse 50% 35% at 0% 80%, rgba(56, 189, 248, 0.07), transparent 45%),
       linear-gradient(180deg, #030712 0%, #061018 50%, #030712 100%);
   }
+
+  /* Uiverse HUD agent core — expands while speaking */
+  .svg-frame {
+    position: relative;
+    width: min(72vw, 280px);
+    height: min(72vw, 280px);
+    transform-style: preserve-3d;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    filter: drop-shadow(0 0 18px rgba(0, 255, 255, 0.25));
+  }
+
+  .svg-frame svg {
+    position: absolute;
+    transition: transform 0.55s ease;
+    z-index: calc(1 - (0.2 * var(--j)));
+    transform-origin: center;
+    width: 108%;
+    height: 108%;
+    fill: none;
+  }
+
+  .svg-frame.is-speaking svg {
+    transform: rotate(-80deg) skew(30deg) translateX(calc(36px * var(--i)))
+      translateY(calc(-28px * var(--i)));
+  }
+
+  .svg-frame.is-listening svg {
+    transform: rotate(-12deg) translateX(calc(6px * var(--i)))
+      translateY(calc(-4px * var(--i)));
+  }
+
+  .svg-frame.is-thinking svg {
+    transform: rotate(8deg) scale(1.02);
+  }
+
+  .svg-frame svg #center {
+    transition: transform 0.55s ease;
+    transform-origin: center;
+  }
+
+  .svg-frame.is-speaking svg #center {
+    transform: rotate(-30deg) translateX(36px) translateY(-3px);
+  }
+
+  .svg-frame #out2 {
+    animation: alpha-hud-spin 7s ease-in-out infinite alternate;
+    transform-origin: center;
+  }
+
+  .svg-frame #out3 {
+    animation: alpha-hud-spin 3s ease-in-out infinite alternate;
+    transform-origin: center;
+    stroke: #ff0;
+  }
+
+  .svg-frame #inner3,
+  .svg-frame #inner1 {
+    animation: alpha-hud-spin 4s ease-in-out infinite alternate;
+    transform-origin: center;
+  }
+
+  .svg-frame #center1 {
+    fill: #ff0;
+    animation: alpha-hud-spin 2s ease-in-out infinite alternate;
+    transform-origin: center;
+  }
+
+  .svg-frame.is-speaking {
+    filter: drop-shadow(0 0 28px rgba(0, 255, 255, 0.45))
+      drop-shadow(0 0 48px rgba(255, 213, 79, 0.2));
+  }
+}
+
+@keyframes alpha-hud-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

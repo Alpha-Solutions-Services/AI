@@ -156,6 +156,9 @@ export function AlphaChat() {
         await runClientActions(json.clientActions);
       }
       if (speakEnabled && reply) {
+        // Mark speaking immediately so live mic pauses before TTS starts
+        speakingRef.current = true;
+        setSpeaking(true);
         speakText(reply, {
           onStart: () => {
             speakingRef.current = true;
@@ -294,6 +297,7 @@ export function AlphaChat() {
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-2.5">
           <VoiceDock
             disabled={busy}
+            agentSpeaking={speaking}
             speakEnabled={speakEnabled}
             onSpeakEnabledChange={persistSpeak}
             onListeningChange={setListening}
@@ -301,7 +305,7 @@ export function AlphaChat() {
             onLevel={setLevel}
             onBargeIn={handleBargeIn}
             onTranscript={(t) => {
-              if (busyRef.current) return;
+              if (busyRef.current || speakingRef.current) return;
               const cleaned = cleanVoiceTranscript(t);
               if (!cleaned) return;
               setText(cleaned);
