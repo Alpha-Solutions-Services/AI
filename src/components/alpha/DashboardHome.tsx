@@ -21,7 +21,7 @@ function StubView({
 }) {
   return (
     <div className="flex h-full min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center">
-      <div className="flex h-14 w-14 items-center justify-center border border-[var(--color-border)] bg-[var(--color-accent-dim)] text-[var(--color-accent)] shadow-[var(--glow-sm)]">
+      <div className="glass-chip flex h-14 w-14 items-center justify-center rounded-2xl text-[var(--color-accent)] shadow-[var(--glow-sm)]">
         <Icon size={26} />
       </div>
       <h2

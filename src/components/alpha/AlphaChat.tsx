@@ -5,7 +5,11 @@ import { motion } from "framer-motion";
 import { Loader2, Send } from "lucide-react";
 import { ConfirmCard, type PendingConfirm } from "@/components/alpha/ConfirmCard";
 import { SpeakingOrb } from "@/components/alpha/SpeakingOrb";
-import { VoiceDock, speakText } from "@/components/alpha/VoiceDock";
+import {
+  VoiceDock,
+  speakText,
+  stopSpeaking,
+} from "@/components/alpha/VoiceDock";
 import type { ClientAction } from "@/lib/alpha/tools/browser";
 import { cleanVoiceTranscript } from "@/lib/alpha/voice-text";
 
@@ -54,6 +58,7 @@ export function AlphaChat() {
   const [speakEnabled, setSpeakEnabled] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
+  const speakingRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -77,6 +82,14 @@ export function AlphaChat() {
     }
   }
 
+  function handleBargeIn() {
+    if (!speakingRef.current) return;
+    stopSpeaking();
+    speakingRef.current = false;
+    setSpeaking(false);
+    setLevel(0);
+  }
+
   const mode = speaking
     ? "speaking"
     : listening
@@ -88,6 +101,8 @@ export function AlphaChat() {
   async function send(message: string) {
     const trimmed = cleanVoiceTranscript(message);
     if (!trimmed || busyRef.current) return;
+    // Interrupt any in-progress reply voice
+    handleBargeIn();
     busyRef.current = true;
     setBusy(true);
     setError(null);
@@ -142,8 +157,12 @@ export function AlphaChat() {
       }
       if (speakEnabled && reply) {
         speakText(reply, {
-          onStart: () => setSpeaking(true),
+          onStart: () => {
+            speakingRef.current = true;
+            setSpeaking(true);
+          },
           onEnd: () => {
+            speakingRef.current = false;
             setSpeaking(false);
             setLevel(0);
           },
@@ -168,7 +187,11 @@ export function AlphaChat() {
             showHeroOrb ? "" : "scale-90"
           }`}
         >
-          <div className={showHeroOrb ? "w-full max-w-[360px]" : "w-[140px] sm:w-[170px]"}>
+          <div
+            className={
+              showHeroOrb ? "w-full max-w-[360px]" : "w-[140px] sm:w-[170px]"
+            }
+          >
             <SpeakingOrb mode={mode} level={level} />
           </div>
           <p className="mt-1 text-center text-[9px] font-semibold uppercase tracking-[0.32em] text-[var(--color-accent-2)]/80">
@@ -182,7 +205,7 @@ export function AlphaChat() {
           </p>
           {(listening || interim) && (
             <p
-              className="mt-2 max-w-lg border border-[var(--color-border)] bg-black/30 px-4 py-2 text-center text-sm text-[var(--color-accent-2)] backdrop-blur-sm"
+              className="glass-chip mt-2 max-w-lg rounded-2xl px-4 py-2.5 text-center text-sm text-[var(--color-accent-2)]"
               dir="auto"
             >
               {interim || "…"}
@@ -199,7 +222,7 @@ export function AlphaChat() {
                   type="button"
                   onClick={() => void send(s)}
                   dir="auto"
-                  className="border border-[var(--color-border)] bg-black/25 px-3 py-3 text-left text-[13px] text-[var(--color-chrome)] transition hover:border-[var(--color-border-glow)] hover:bg-[var(--color-accent-dim)]"
+                  className="glass-chip rounded-2xl px-3 py-3 text-left text-[13px] text-[var(--color-chrome)] transition hover:border-[var(--color-border-glow)] hover:bg-[var(--color-accent-dim)]"
                 >
                   {s}
                 </button>
@@ -213,11 +236,11 @@ export function AlphaChat() {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               dir="auto"
-              className={`mx-auto max-w-2xl whitespace-pre-wrap px-3.5 py-2.5 text-[14px] leading-relaxed ${
+              className={`mx-auto max-w-2xl whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-[14px] leading-relaxed ${
                 m.role === "user"
-                  ? "ml-auto border border-[var(--color-accent)]/40 bg-[var(--color-accent)]/10 text-[var(--color-text)]"
+                  ? "ml-auto border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/12 text-[var(--color-text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-md"
                   : m.role === "assistant"
-                    ? "mr-auto border border-[var(--color-border)] bg-black/35 text-[var(--color-text)]"
+                    ? "glass-chip mr-auto text-[var(--color-text)]"
                     : "text-[var(--color-muted)]"
               }`}
             >
@@ -262,7 +285,7 @@ export function AlphaChat() {
       </div>
 
       <form
-        className="mt-auto border-t border-[var(--color-border)] bg-black/50 px-3 py-3 backdrop-blur-md"
+        className="mt-auto border-t border-[var(--color-border)] bg-[rgba(5,10,18,0.55)] px-3 py-3 backdrop-blur-xl"
         onSubmit={(e) => {
           e.preventDefault();
           void send(text);
@@ -270,12 +293,13 @@ export function AlphaChat() {
       >
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-2.5">
           <VoiceDock
-            disabled={busy || speaking}
+            disabled={busy}
             speakEnabled={speakEnabled}
             onSpeakEnabledChange={persistSpeak}
             onListeningChange={setListening}
             onInterim={setInterim}
             onLevel={setLevel}
+            onBargeIn={handleBargeIn}
             onTranscript={(t) => {
               if (busyRef.current) return;
               const cleaned = cleanVoiceTranscript(t);
@@ -292,7 +316,7 @@ export function AlphaChat() {
               rows={2}
               dir="auto"
               placeholder="Ask Alpha AI Agent anything…"
-              className="max-h-28 min-h-[44px] flex-1 resize-none border border-[var(--color-border)] bg-[#050a12]/70 px-3 py-2.5 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)]/50"
+              className="glass-chip max-h-28 min-h-[44px] flex-1 resize-none rounded-2xl px-3.5 py-2.5 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)]/55"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -303,7 +327,7 @@ export function AlphaChat() {
             <button
               type="submit"
               disabled={busy || !text.trim()}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center border border-[var(--color-accent)]/50 bg-[var(--color-accent)] text-[#050a12] shadow-[var(--glow-sm)] disabled:opacity-40"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-accent)]/50 bg-[var(--color-accent)] text-[#050a12] shadow-[var(--glow-sm)] disabled:opacity-40"
               aria-label="Send"
             >
               <Send size={16} />

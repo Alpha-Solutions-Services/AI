@@ -208,7 +208,7 @@ export function LeftHudPanel() {
         <ul className="space-y-2.5">
           {caps.map((cap) => (
             <li key={cap.title} className="flex gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--color-border)] bg-[var(--color-accent-dim)] text-[var(--color-accent)]">
+              <div className="glass-chip flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[var(--color-accent)]">
                 <cap.icon size={16} />
               </div>
               <div>
@@ -241,7 +241,7 @@ export function LeftHudPanel() {
             return (
               <li
                 key={p.name}
-                className="flex items-center gap-2 border border-[var(--color-border)]/60 bg-black/20 px-2.5 py-2 text-[11px] text-[var(--color-chrome)]"
+                className="glass-chip flex items-center gap-2 rounded-xl px-2.5 py-2 text-[11px] text-[var(--color-chrome)]"
               >
                 <span
                   className={`h-1.5 w-1.5 shrink-0 rounded-full ${
@@ -301,7 +301,7 @@ export function RightHudPanel() {
           Help Alpha Solutions staff think, plan, and execute across Portal, TMS,
           Learn Dispatch, and the open web — with confirm-before-write control.
         </p>
-        <p className="mt-3 inline-flex items-center gap-1.5 border border-[var(--color-gold)]/30 bg-[var(--color-gold-dim)] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-[var(--color-gold)]">
+        <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--color-gold)]/30 bg-[var(--color-gold-dim)] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-[var(--color-gold)] backdrop-blur-md">
           <Zap size={10} /> J.A.R.V.I.S. Mode
         </p>
       </div>
@@ -312,7 +312,7 @@ export function RightHudPanel() {
           {directives.map((d) => (
             <li
               key={d.label}
-              className="flex items-center gap-2.5 border border-[var(--color-border)]/70 px-2.5 py-2 text-xs text-[var(--color-text)]"
+              className="glass-chip flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs text-[var(--color-text)]"
             >
               <d.icon size={14} className="text-[var(--color-accent)]" />
               {d.label}
@@ -331,7 +331,7 @@ export function RightHudPanel() {
           ].map((s) => (
             <div
               key={s.k}
-              className="border border-[var(--color-border)] bg-black/25 px-2 py-2 text-center"
+              className="glass-chip rounded-xl px-2 py-2 text-center"
             >
               <p className="font-mono text-sm tabular-nums text-[var(--color-text)] sm:text-base">
                 {s.v}
@@ -350,7 +350,7 @@ export function RightHudPanel() {
           ].map((s) => (
             <div
               key={s.k}
-              className="flex items-center justify-between border border-[var(--color-border)] bg-black/25 px-3 py-2"
+              className="glass-chip flex items-center justify-between rounded-xl px-3 py-2"
             >
               <span className="flex items-center gap-2 text-[11px] text-[var(--color-muted)]">
                 <s.icon size={12} className="text-[var(--color-accent)]" />
@@ -424,7 +424,7 @@ export function HudShell({
       <div aria-hidden className="hud-scanlines pointer-events-none absolute inset-0" />
 
       {/* Top bar */}
-      <header className="relative z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-[var(--color-border)] bg-[#050a12]/80 px-3 py-2.5 backdrop-blur-xl sm:px-5">
+      <header className="relative z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-[var(--color-border)] bg-[rgba(5,10,18,0.55)] px-3 py-2.5 backdrop-blur-2xl sm:px-5">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
@@ -445,7 +445,7 @@ export function HudShell({
                 onClick={() =>
                   setMobilePanel((p) => (p === "left" ? "none" : "left"))
                 }
-                className="border border-[var(--color-border)] px-2 py-1 text-[9px] uppercase tracking-wider text-[var(--color-accent)]"
+                className="glass-chip rounded-full px-2.5 py-1 text-[9px] uppercase tracking-wider text-[var(--color-accent)]"
               >
                 Caps
               </button>
@@ -454,7 +454,7 @@ export function HudShell({
                 onClick={() =>
                   setMobilePanel((p) => (p === "right" ? "none" : "right"))
                 }
-                className="border border-[var(--color-border)] px-2 py-1 text-[9px] uppercase tracking-wider text-[var(--color-accent)]"
+                className="glass-chip rounded-full px-2.5 py-1 text-[9px] uppercase tracking-wider text-[var(--color-accent)]"
               >
                 Mission
               </button>
@@ -489,7 +489,7 @@ export function HudShell({
           <button
             type="button"
             onClick={() => void signOut()}
-            className="border border-[var(--color-border)] p-2 text-[var(--color-muted)] hover:text-[var(--color-accent)]"
+            className="glass-chip rounded-xl p-2 text-[var(--color-muted)] hover:text-[var(--color-accent)]"
             aria-label="Sign out"
           >
             <LogOut size={16} />
@@ -547,11 +547,11 @@ export function HudShell({
 
       {/* Bottom dock */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--color-border)] bg-[#050a12]/95 backdrop-blur-xl"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--color-border)] bg-[rgba(5,10,18,0.62)] backdrop-blur-2xl"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         aria-label="Primary"
       >
-        <ul className="mx-auto flex max-w-[1600px] gap-0.5 overflow-x-auto px-1 py-1.5 sm:justify-center sm:gap-1 sm:px-3">
+        <ul className="mx-auto flex max-w-[1600px] gap-1 overflow-x-auto px-1.5 py-1.5 sm:justify-center sm:gap-1.5 sm:px-3">
           {BOTTOM_NAV.map((item) => {
             const Icon = item.icon;
             const active = item.view
@@ -566,10 +566,10 @@ export function HudShell({
                 <Link
                   href={item.href}
                   className={clsx(
-                    "flex flex-col items-center gap-1 border px-1.5 py-2 text-center transition sm:min-w-[5.5rem]",
+                    "flex flex-col items-center gap-1 rounded-2xl border px-1.5 py-2 text-center transition sm:min-w-[5.5rem]",
                     active
-                      ? "border-[var(--color-accent)]/50 bg-[var(--color-accent-dim)] text-[var(--color-accent-2)] shadow-[0_0_16px_rgba(0,191,255,0.25)]"
-                      : "border-transparent text-[var(--color-muted)] hover:border-[var(--color-border)] hover:text-[var(--color-chrome)]"
+                      ? "border-[var(--color-accent)]/45 bg-[var(--color-accent-dim)] text-[var(--color-accent-2)] shadow-[0_0_18px_rgba(0,191,255,0.28)] backdrop-blur-md"
+                      : "border-transparent text-[var(--color-muted)] hover:border-[var(--color-border)] hover:bg-white/[0.04] hover:text-[var(--color-chrome)]"
                   )}
                 >
                   <Icon size={16} strokeWidth={active ? 2.25 : 1.75} />

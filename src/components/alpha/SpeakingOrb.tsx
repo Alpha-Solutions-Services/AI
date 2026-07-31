@@ -15,24 +15,53 @@ type Particle = {
   speed: number;
   size: number;
   phase: number;
+  /** stroke offset for thicker letter strokes */
+  offset?: number;
 };
 
-function sampleLetterA(count: number): { x: number; y: number }[] {
-  const pts: { x: number; y: number }[] = [];
-  const left = (t: number) => ({ x: -0.5 + t * 0.5, y: 0.7 - t * 1.4 });
-  const right = (t: number) => ({ x: 0.5 - t * 0.5, y: 0.7 - t * 1.4 });
-  const bar = (t: number) => ({ x: -0.24 + t * 0.48, y: 0.1 });
-  const nSide = Math.floor(count * 0.4);
-  const nBar = count - nSide * 2;
-  for (let i = 0; i < nSide; i++) pts.push(left(i / Math.max(1, nSide - 1)));
-  for (let i = 0; i < nSide; i++) pts.push(right(i / Math.max(1, nSide - 1)));
-  for (let i = 0; i < nBar; i++) pts.push(bar(i / Math.max(1, nBar - 1)));
+/** Sample a thicker letter A — multiple parallel strokes along each edge. */
+function sampleLetterA(count: number): { x: number; y: number; offset: number }[] {
+  const pts: { x: number; y: number; offset: number }[] = [];
+  // Wider silhouette + thicker crossbar
+  const left = (t: number, o: number) => ({
+    x: -0.52 + t * 0.52 + o,
+    y: 0.72 - t * 1.44,
+    offset: o,
+  });
+  const right = (t: number, o: number) => ({
+    x: 0.52 - t * 0.52 + o,
+    y: 0.72 - t * 1.44,
+    offset: o,
+  });
+  const bar = (t: number, o: number) => ({
+    x: -0.3 + t * 0.6,
+    y: 0.12 + o,
+    offset: o,
+  });
+
+  const strokeOffsets = [-0.055, -0.028, 0, 0.028, 0.055];
+  const nSide = Math.floor(count * 0.38);
+  const nBar = Math.max(8, count - nSide * 2);
+
+  for (const o of strokeOffsets) {
+    for (let i = 0; i < nSide; i++) {
+      pts.push(left(i / Math.max(1, nSide - 1), o * 0.55));
+    }
+    for (let i = 0; i < nSide; i++) {
+      pts.push(right(i / Math.max(1, nSide - 1), o * 0.55));
+    }
+  }
+  for (const o of [-0.04, -0.02, 0, 0.02, 0.04]) {
+    for (let i = 0; i < nBar; i++) {
+      pts.push(bar(i / Math.max(1, nBar - 1), o));
+    }
+  }
   return pts;
 }
 
 const RINGS = [0.82, 1.02, 1.22, 1.42];
 
-/** Professional particle A — constellation glow, no grid/cross-hatch. */
+/** Professional particle A — constellation glow with bold stroke weight. */
 export function SpeakingOrb({
   mode = "idle",
   level = 0,
@@ -45,7 +74,7 @@ export function SpeakingOrb({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modeRef = useRef(mode);
   const levelRef = useRef(level);
-  const letterPts = useMemo(() => sampleLetterA(96), []);
+  const letterPts = useMemo(() => sampleLetterA(72), []);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -95,8 +124,9 @@ export function SpeakingOrb({
           angle: 0,
           orbitR: 0,
           speed: 0,
-          size: 0.85 + (i % 4) * 0.12,
+          size: 1.15 + (i % 4) * 0.18,
           phase: Math.random() * Math.PI * 2,
+          offset: p.offset,
         })),
         ...Array.from({ length: 36 }, (_, i) => {
           const ring = RINGS[1 + (i % 3)];
@@ -196,22 +226,48 @@ export function SpeakingOrb({
         c.restore();
       });
 
-      // Thin outline A under particles
+      // Bold outline A — widened stroke weight
       c.save();
       c.translate(cx, cy);
       c.scale(scale, scale);
-      c.strokeStyle = `rgba(160, 220, 245, ${0.22 + energy * 0.2})`;
-      c.lineWidth = 0.035;
       c.lineCap = "round";
       c.lineJoin = "round";
-      c.shadowColor = "rgba(0, 180, 230, 0.4)";
-      c.shadowBlur = 10;
+      c.shadowColor = "rgba(0, 180, 230, 0.55)";
+      c.shadowBlur = 14;
+
+      // Soft outer glow stroke
+      c.strokeStyle = `rgba(0, 180, 230, ${0.18 + energy * 0.15})`;
+      c.lineWidth = 0.14;
       c.beginPath();
-      c.moveTo(-0.5, 0.7);
-      c.lineTo(0, -0.7);
-      c.lineTo(0.5, 0.7);
-      c.moveTo(-0.24, 0.1);
-      c.lineTo(0.24, 0.1);
+      c.moveTo(-0.52, 0.72);
+      c.lineTo(0, -0.72);
+      c.lineTo(0.52, 0.72);
+      c.moveTo(-0.3, 0.12);
+      c.lineTo(0.3, 0.12);
+      c.stroke();
+
+      // Core bold stroke
+      c.strokeStyle = `rgba(200, 240, 255, ${0.55 + energy * 0.3})`;
+      c.lineWidth = 0.085;
+      c.shadowBlur = 8;
+      c.beginPath();
+      c.moveTo(-0.52, 0.72);
+      c.lineTo(0, -0.72);
+      c.lineTo(0.52, 0.72);
+      c.moveTo(-0.3, 0.12);
+      c.lineTo(0.3, 0.12);
+      c.stroke();
+
+      // Inner bright edge
+      c.strokeStyle = `rgba(255, 255, 255, ${0.35 + energy * 0.25})`;
+      c.lineWidth = 0.038;
+      c.shadowBlur = 0;
+      c.beginPath();
+      c.moveTo(-0.52, 0.72);
+      c.lineTo(0, -0.72);
+      c.lineTo(0.52, 0.72);
+      c.moveTo(-0.3, 0.12);
+      c.lineTo(0.3, 0.12);
       c.stroke();
       c.restore();
 
@@ -242,15 +298,14 @@ export function SpeakingOrb({
               ? 0.28 + energy * 0.25
               : 0.12 + energy * 0.12;
 
-        // Soft bloom only for letter particles — tight, not cartoon blobs
         if (p.kind === "letter") {
-          const g = c.createRadialGradient(px, py, 0, px, py, p.size * 2.2);
-          g.addColorStop(0, `rgba(220, 245, 255, ${alpha * 0.85})`);
-          g.addColorStop(0.55, `rgba(0, 180, 230, ${alpha * 0.25})`);
+          const g = c.createRadialGradient(px, py, 0, px, py, p.size * 2.6);
+          g.addColorStop(0, `rgba(220, 245, 255, ${alpha * 0.9})`);
+          g.addColorStop(0.55, `rgba(0, 180, 230, ${alpha * 0.28})`);
           g.addColorStop(1, "rgba(0, 180, 230, 0)");
           c.fillStyle = g;
           c.beginPath();
-          c.arc(px, py, p.size * (1.8 + energy * 0.4), 0, Math.PI * 2);
+          c.arc(px, py, p.size * (2.1 + energy * 0.45), 0, Math.PI * 2);
           c.fill();
         }
 
@@ -262,7 +317,7 @@ export function SpeakingOrb({
         c.arc(
           px,
           py,
-          p.size * (1 + energy * (p.kind === "letter" ? 0.25 : 0.15)),
+          p.size * (1 + energy * (p.kind === "letter" ? 0.3 : 0.15)),
           0,
           Math.PI * 2
         );
