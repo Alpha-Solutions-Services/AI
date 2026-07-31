@@ -7,6 +7,7 @@ import {
   retrieveKnowledge,
 } from "@/lib/alpha/retrieve";
 import { buildSystemPrompt } from "@/lib/alpha/system-prompt";
+import { matchSkills } from "@/config/alpha-skills.config";
 import {
   extractClientActions,
   type ClientAction,
@@ -149,9 +150,15 @@ export async function POST(req: NextRequest) {
       .limit(24);
 
     const chunks = await retrieveKnowledge(parsed.message, 6);
+    const planetMatch = parsed.message.match(
+      /\[Universe context: active planet = ([^\]]+)\]/i
+    );
+    const activePlanet = planetMatch?.[1]?.trim() || null;
+    const activeSkills = matchSkills(parsed.message, activePlanet);
     const system = buildSystemPrompt(
       formatKnowledgeContext(chunks),
-      session.user.email || session.user.id
+      session.user.email || session.user.id,
+      activeSkills
     );
 
     const messages: ChatMessage[] = [

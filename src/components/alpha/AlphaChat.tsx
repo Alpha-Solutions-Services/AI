@@ -192,7 +192,9 @@ export function AlphaChat() {
         >
           <div
             className={
-              showHeroOrb ? "w-full max-w-[380px]" : "w-[150px] sm:w-[180px]"
+              showHeroOrb
+                ? "w-full max-w-[220px] sm:max-w-[300px] md:max-w-[360px]"
+                : "w-[120px] sm:w-[160px]"
             }
           >
             <SpeakingOrb mode={mode} level={level} />

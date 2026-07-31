@@ -69,7 +69,7 @@ export function AlphaStar({
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="absolute left-1/2 top-full z-30 mt-2 w-[min(280px,70vw)] -translate-x-1/2 rounded-2xl border border-amber-300/25 bg-[#0a1220]/92 px-3 py-2 text-left shadow-[0_0_30px_rgba(251,191,36,0.15)] backdrop-blur-xl"
+          className="absolute left-1/2 top-full z-30 mt-1 hidden w-[min(260px,68vw)] -translate-x-1/2 rounded-2xl border border-amber-300/25 bg-[#0a1220]/92 px-3 py-2 text-left shadow-[0_0_30px_rgba(251,191,36,0.15)] backdrop-blur-xl sm:block"
         >
           <p className="line-clamp-4 text-[11px] leading-relaxed text-slate-200">
             {starReply}

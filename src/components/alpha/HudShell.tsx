@@ -209,7 +209,7 @@ export function HudShell({
   }
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col overflow-hidden">
+    <div className="relative flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden">
       <div aria-hidden className="alpha-ambient pointer-events-none absolute inset-0" />
       <div aria-hidden className="hud-grid pointer-events-none absolute inset-0" />
       <div aria-hidden className="hud-scanlines pointer-events-none absolute inset-0 opacity-60" />
