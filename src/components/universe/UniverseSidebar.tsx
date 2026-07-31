@@ -52,8 +52,8 @@ export function UniverseSidebar({
   return (
     <aside
       className={clsx(
-        "flex h-full flex-col border-r border-sky-500/15 bg-[#060b14]/95 backdrop-blur-xl",
-        collapsed ? "w-[72px] px-2" : "w-[220px] px-3"
+        "flex h-full w-[min(100%,280px)] shrink-0 flex-col border-r border-sky-500/15 bg-[#060b14] backdrop-blur-xl lg:w-[220px]",
+        collapsed ? "lg:w-[72px] lg:px-2" : "px-3"
       )}
     >
       <div className={clsx("py-4", collapsed && "px-0 text-center")}>

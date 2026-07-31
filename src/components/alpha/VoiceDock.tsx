@@ -515,27 +515,27 @@ export function VoiceDock({
   }
 
   return (
-    <div className="flex w-full flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-full min-w-0 flex-col gap-2">
+      <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
         <button
           type="button"
           disabled={uploading}
           onClick={() => void toggleLive()}
-          className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2.5 rounded-2xl border px-4 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] transition sm:flex-none sm:min-w-[12.5rem] ${
+          className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] transition sm:min-h-12 sm:w-auto sm:min-w-[11rem] sm:gap-2.5 sm:px-4 sm:py-3.5 sm:text-sm sm:tracking-[0.14em] ${
             live
               ? "border-emerald-400/45 bg-emerald-400/15 text-emerald-300 shadow-[0_0_32px_rgba(52,211,153,0.28)] backdrop-blur-xl"
               : "glass-strong border-[var(--color-accent)]/40 text-[var(--color-accent-2)] hover:border-[var(--color-accent)]"
           } disabled:opacity-40`}
           aria-pressed={live}
         >
-          {live ? <MicOff size={20} /> : <Mic size={20} />}
-          <span>{live ? "Live · On" : "Live Talk"}</span>
+          {live ? <MicOff size={18} /> : <Mic size={18} />}
+          <span className="truncate">{live ? "Live · On" : "Live Talk"}</span>
         </button>
 
         <button
           type="button"
           onClick={() => onSpeakEnabledChange(!speakEnabled)}
-          className={`glass-chip inline-flex h-12 items-center gap-2 rounded-2xl px-3.5 text-xs uppercase tracking-wider ${
+          className={`glass-chip inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-3 text-xs uppercase tracking-wider sm:h-12 sm:w-auto sm:px-3.5 ${
             speakEnabled
               ? "text-[var(--color-accent)]"
               : "text-[var(--color-muted)]"
@@ -543,12 +543,10 @@ export function VoiceDock({
           title={speakEnabled ? "Mute Alpha voice" : "Enable spoken replies"}
         >
           {speakEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-          <span className="hidden sm:inline">
-            {speakEnabled ? "TTS on" : "TTS off"}
-          </span>
+          <span>{speakEnabled ? "TTS on" : "TTS off"}</span>
         </button>
 
-        <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)]">
+        <span className="col-span-2 text-center text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)] sm:col-span-1 sm:text-left">
           EN · اردو
           {modeLabel === "live"
             ? " · auto-send"
@@ -559,12 +557,12 @@ export function VoiceDock({
       </div>
 
       {live ? (
-        <p className="text-[11px] text-emerald-300/90">
+        <p className="text-[11px] leading-snug text-emerald-300/90">
           {uploading
             ? "Transcribing…"
             : disabled
               ? "Listening — will send after Alpha finishes"
-              : "Listening live — speak naturally; Alpha sends when you pause. Tap Live again to stop."}
+              : "Listening — speak, pause to send. Tap Live again to stop."}
         </p>
       ) : null}
       {micError ? <p className="text-[11px] text-red-400">{micError}</p> : null}

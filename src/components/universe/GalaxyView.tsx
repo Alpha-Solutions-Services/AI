@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
-import { Map as MapIcon, RotateCcw } from "lucide-react";
-import { PLANETS, type PlanetConfig } from "@/config/planets.config";
+import { ChevronRight, RotateCcw } from "lucide-react";
+import { PLANETS, getEnabledPlanets, type PlanetConfig } from "@/config/planets.config";
 import { SKILL_CONSTELLATION } from "@/config/alpha-skills.config";
 import { AlphaStar } from "@/components/universe/AlphaStar";
 import { AgentSatellites } from "@/components/universe/AgentSatellites";
@@ -19,19 +19,17 @@ function PlanetOrb({
   left,
   top,
   beamed,
-  compact,
   onSelect,
 }: {
   planet: PlanetConfig;
   left: string;
   top: string;
   beamed?: boolean;
-  compact?: boolean;
   onSelect: (p: PlanetConfig) => void;
 }) {
   const [hover, setHover] = useState(false);
   const reduce = useReducedMotion();
-  const dim = planet.enabled ? 1 : 0.38;
+  const dim = planet.enabled ? 1 : 0.4;
 
   return (
     <button
@@ -40,8 +38,6 @@ function PlanetOrb({
       style={{ left, top, opacity: dim }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      onFocus={() => setHover(true)}
-      onBlur={() => setHover(false)}
       onClick={() => onSelect(planet)}
       aria-label={`${planet.name}: ${planet.subtitle}`}
     >
@@ -53,9 +49,7 @@ function PlanetOrb({
               ? `0 0 28px ${planet.theme.glow}`
               : `0 0 14px ${planet.theme.glow}`,
         }}
-        className={`relative mx-auto rounded-full ${
-          compact ? "h-9 w-9" : "h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14"
-        }`}
+        className="relative mx-auto h-11 w-11 rounded-full lg:h-14 lg:w-14"
         style={{
           background: `radial-gradient(circle at 32% 28%, #fff 0%, ${planet.theme.primary} 42%, #020617 100%)`,
           border: beamed
@@ -63,21 +57,97 @@ function PlanetOrb({
             : `1px solid ${planet.theme.primary}66`,
         }}
       />
-      <div className="mt-1 max-w-[5.5rem] sm:max-w-[7rem]">
-        <p
-          className={`truncate text-[9px] font-semibold sm:text-[11px] ${
-            hover ? "text-white" : "text-slate-200"
-          }`}
-        >
-          {planet.name}
-        </p>
-        {!compact ? (
-          <p className="hidden truncate text-[8px] text-slate-500 sm:block">
-            {planet.subtitle}
-          </p>
-        ) : null}
-      </div>
+      <p className="mt-1 max-w-[6.5rem] truncate text-[10px] font-semibold text-slate-200 lg:text-[11px]">
+        {planet.name}
+      </p>
     </button>
+  );
+}
+
+/** Mobile / tablet: readable connected module list (no crushed orbit). */
+function MobileGalaxy({
+  onOpen,
+}: {
+  onOpen: (p: PlanetConfig) => void;
+}) {
+  const enabled = getEnabledPlanets();
+  const soon = PLANETS.filter((p) => !p.enabled).slice(0, 4);
+
+  return (
+    <div className="space-y-3 px-3 pb-2 pt-2 lg:hidden">
+      <div className="flex items-center justify-center gap-3 rounded-2xl border border-amber-300/20 bg-amber-500/5 px-3 py-4">
+        <div
+          className="h-14 w-14 shrink-0 rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle at 35% 30%, #fff8e7 0%, #fbbf24 40%, #b45309 100%)",
+            boxShadow: "0 0 28px rgba(251,191,36,0.45)",
+          }}
+        />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-amber-100">Alpha Star</p>
+          <p className="text-[11px] text-slate-400">
+            Connected to live modules below
+          </p>
+        </div>
+      </div>
+
+      <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300/90">
+        Live modules
+      </p>
+      <ul className="space-y-2">
+        {enabled.map((p, i) => (
+          <li key={p.id}>
+            <button
+              type="button"
+              onClick={() => onOpen(p)}
+              className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-left touch-manipulation active:bg-white/[0.07]"
+              style={{ borderColor: `${p.theme.primary}44` }}
+            >
+              <span
+                className="h-10 w-10 shrink-0 rounded-full"
+                style={{
+                  background: `radial-gradient(circle at 32% 28%, #fff, ${p.theme.primary} 50%, #020617)`,
+                  boxShadow: `0 0 16px ${p.theme.glow}`,
+                }}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-slate-100">
+                  {p.name}
+                </span>
+                <span className="block truncate text-[11px] text-slate-500">
+                  {p.subtitle}
+                </span>
+                {i < enabled.length - 1 ? (
+                  <span className="mt-1 block text-[9px] text-violet-300/80">
+                    ↕ skill link · connected
+                  </span>
+                ) : null}
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-slate-500" />
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {soon.length ? (
+        <>
+          <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Coming soon
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {soon.map((p) => (
+              <span
+                key={p.id}
+                className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-slate-500"
+              >
+                {p.name}
+              </span>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
   );
 }
 
@@ -87,7 +157,6 @@ export function GalaxyView() {
     setActivePlanetId,
     setCamera,
     resetCamera,
-    camera,
     beamPlanetId,
     setBeamPlanetId,
   } = useUniverse();
@@ -97,36 +166,24 @@ export function GalaxyView() {
     label: overviewData?.health.label ?? "Loading…",
   };
   const reduce = useReducedMotion();
-  const [mobile, setMobile] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    const apply = () => setMobile(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
 
   const layout = useMemo(() => {
-    // Mobile: tighter orbit, prefer enabled planets (still show all, denser)
-    const rxScale = mobile ? 32 : 38;
-    const ryScale = mobile ? 24 : 28;
     return PLANETS.map((p) => {
       const rad = (p.orbit.angleDeg * Math.PI) / 180;
-      const rx = rxScale * Math.min(p.orbit.radius, mobile ? 1.35 : 1.55);
-      const ry = ryScale * Math.min(p.orbit.radius, mobile ? 1.35 : 1.55);
+      const rx = 36 * p.orbit.radius;
+      const ry = 26 * p.orbit.radius;
       return {
         planet: p,
         x: 50 + Math.cos(rad) * rx,
         y: 50 + Math.sin(rad) * ry,
       };
     });
-  }, [mobile]);
+  }, []);
 
   const byId = useMemo(() => {
     const m = new Map<string, { x: number; y: number; enabled: boolean }>();
     for (const row of layout) {
-      m.set(row.planet.id, {
+      m.set(String(row.planet.id), {
         x: row.x,
         y: row.y,
         enabled: row.planet.enabled,
@@ -153,43 +210,34 @@ export function GalaxyView() {
     router.push(p.route);
   }
 
-  const zoom = Math.min(camera.zoom, mobile ? 1 : 1.15);
-
   return (
-    <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="absolute right-2 top-2 z-20 flex items-center gap-2 rounded-2xl border border-white/10 bg-[#0a1220]/85 px-2 py-1.5 backdrop-blur-xl sm:right-4 sm:top-4 sm:px-3 sm:py-2">
-        <div className="relative">
-          <ProgressRing percent={health.percent} size={36} />
+    <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-hidden">
+      <div className="absolute right-2 top-2 z-20 flex max-w-[55%] items-center gap-2 rounded-2xl border border-white/10 bg-[#0a1220]/90 px-2 py-1.5 backdrop-blur-xl sm:right-4 sm:top-3">
+        <div className="relative shrink-0">
+          <ProgressRing percent={health.percent} size={34} />
           <span className="absolute inset-0 flex items-center justify-center text-[8px] font-semibold text-sky-200">
             {health.percent.toFixed(0)}%
           </span>
         </div>
-        <p className="max-w-[7rem] truncate text-[10px] text-slate-300 sm:max-w-none sm:text-xs">
+        <p className="truncate text-[10px] text-slate-300 sm:text-xs">
           {health.label}
         </p>
       </div>
 
-      <div className="relative mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col px-2 pt-12 sm:px-4 sm:pt-14">
-        <div
-          className="relative mx-auto w-full flex-1 overflow-hidden rounded-3xl border border-white/5 bg-black/20"
-          style={{
-            minHeight: mobile ? 280 : 340,
-            maxHeight: mobile ? "min(42vh, 360px)" : "min(52vh, 520px)",
-            transform: `scale(${zoom})`,
-            transformOrigin: "center center",
-            transition: reduce ? "none" : "transform 0.35s ease",
-          }}
-        >
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-50"
-            style={{
-              backgroundImage:
-                "radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.45), transparent), radial-gradient(1px 1px at 80% 30%, rgba(255,255,255,0.3), transparent), radial-gradient(1.5px 1.5px at 40% 70%, rgba(125,211,252,0.35), transparent)",
-            }}
-          />
+      {/* Mobile list */}
+      <div className="min-h-0 flex-1 overflow-y-auto pt-12 lg:hidden">
+        <MobileGalaxy onOpen={openPlanet} />
+        <div className="px-3 pb-3">
+          <SkillsPanel compact />
+        </div>
+      </div>
 
-          {/* Constellation connections */}
+      {/* Desktop orbit */}
+      <div className="relative mx-auto hidden min-h-0 w-full max-w-5xl flex-1 flex-col px-4 pt-14 lg:flex">
+        <div
+          className="relative mx-auto w-full flex-1 overflow-hidden rounded-3xl border border-white/5 bg-black/25"
+          style={{ minHeight: 380, maxHeight: "min(54vh, 540px)" }}
+        >
           <svg
             className="pointer-events-none absolute inset-0 z-[4] h-full w-full"
             aria-hidden
@@ -204,8 +252,8 @@ export function GalaxyView() {
                   x2={`${x}%`}
                   y2={`${y}%`}
                   stroke={planet.theme.primary}
-                  strokeOpacity={0.28}
-                  strokeWidth={1.25}
+                  strokeOpacity={0.45}
+                  strokeWidth={1.75}
                 />
               ))}
             {SKILL_CONSTELLATION.map(([a, b]) => {
@@ -220,9 +268,9 @@ export function GalaxyView() {
                   y1={`${A.y}%`}
                   x2={`${B.x}%`}
                   y2={`${B.y}%`}
-                  stroke="rgba(167,139,250,0.35)"
-                  strokeWidth={1}
-                  strokeDasharray="3 5"
+                  stroke="rgba(167,139,250,0.55)"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 6"
                 />
               );
             })}
@@ -232,14 +280,14 @@ export function GalaxyView() {
                 y1="50%"
                 x2={`${beamTarget.x}%`}
                 y2={`${beamTarget.y}%`}
-                stroke="rgba(251,191,36,0.75)"
-                strokeWidth={2}
-                strokeDasharray="5 4"
+                stroke="rgba(251,191,36,0.9)"
+                strokeWidth={2.5}
+                strokeDasharray="6 4"
               >
                 {!reduce ? (
                   <animate
                     attributeName="stroke-opacity"
-                    values="0.3;1;0.3"
+                    values="0.35;1;0.35"
                     dur="1s"
                     repeatCount="indefinite"
                   />
@@ -249,9 +297,9 @@ export function GalaxyView() {
           </svg>
 
           <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
-            <div className="relative flex h-[120px] w-[120px] items-center justify-center sm:h-[160px] sm:w-[160px]">
-              <AgentSatellites size={mobile ? 110 : 150} />
-              <AlphaStar size={mobile ? 48 : 56} className="relative z-[1]" />
+            <div className="relative flex h-[160px] w-[160px] items-center justify-center">
+              <AgentSatellites size={150} />
+              <AlphaStar size={56} className="relative z-[1]" />
             </div>
           </div>
 
@@ -262,50 +310,25 @@ export function GalaxyView() {
               left={`${x}%`}
               top={`${y}%`}
               beamed={beamPlanetId === planet.id}
-              compact={mobile}
               onSelect={openPlanet}
             />
           ))}
         </div>
 
-        {/* Mobile quick links for live planets */}
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1 md:hidden">
-          {PLANETS.filter((p) => p.enabled).map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => openPlanet(p)}
-              className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] text-slate-200"
-              style={{ borderColor: `${p.theme.primary}55` }}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
-
         <div className="mt-3 shrink-0">
-          <SkillsPanel compact={mobile} />
+          <SkillsPanel />
         </div>
       </div>
 
-      <div className="relative z-20 mt-auto flex shrink-0 flex-col items-center gap-1.5 px-2 pb-2 pt-2 sm:px-3">
+      <div className="relative z-20 mt-auto flex shrink-0 flex-col items-center gap-1.5 border-t border-white/5 bg-[#030712]/80 px-2 py-2 backdrop-blur-xl sm:px-3">
         <CommandBar />
-        <div className="hidden gap-2 sm:flex">
-          <button
-            type="button"
-            onClick={() => resetCamera()}
-            className="inline-flex touch-manipulation items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-400 hover:text-sky-300"
-          >
-            <RotateCcw size={12} /> Reset
-          </button>
-          <button
-            type="button"
-            className="inline-flex touch-manipulation items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-400 hover:text-sky-300"
-            onClick={() => resetCamera()}
-          >
-            <MapIcon size={12} /> Star Map
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => resetCamera()}
+          className="hidden touch-manipulation items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] uppercase tracking-wider text-slate-400 hover:text-sky-300 lg:inline-flex"
+        >
+          <RotateCcw size={12} /> Reset view
+        </button>
       </div>
     </div>
   );

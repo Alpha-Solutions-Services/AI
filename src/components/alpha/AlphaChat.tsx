@@ -290,13 +290,13 @@ export function AlphaChat() {
       </div>
 
       <form
-        className="mt-auto border-t border-[var(--color-border)] bg-[rgba(3,7,18,0.45)] px-3 py-3.5 backdrop-blur-2xl"
+        className="mt-auto shrink-0 border-t border-[var(--color-border)] bg-[rgba(3,7,18,0.55)] px-2.5 py-2.5 backdrop-blur-2xl sm:px-3 sm:py-3.5"
         onSubmit={(e) => {
           e.preventDefault();
           void send(text);
         }}
       >
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-2.5">
+        <div className="mx-auto flex w-full max-w-2xl min-w-0 flex-col gap-2">
           <VoiceDock
             disabled={busy}
             agentSpeaking={speaking}

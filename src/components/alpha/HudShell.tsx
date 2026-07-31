@@ -214,9 +214,9 @@ export function HudShell({
       <div aria-hidden className="hud-grid pointer-events-none absolute inset-0" />
       <div aria-hidden className="hud-scanlines pointer-events-none absolute inset-0 opacity-60" />
 
-      <header className="relative z-40 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-[var(--color-border)] bg-[rgba(3,7,18,0.55)] px-3 py-3 backdrop-blur-2xl sm:px-5">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2.5 w-2.5">
+      <header className="relative z-40 flex shrink-0 items-center gap-2 border-b border-[var(--color-border)] bg-[rgba(3,7,18,0.55)] px-2.5 py-2.5 backdrop-blur-2xl sm:grid sm:grid-cols-[1fr_auto_1fr] sm:px-5 sm:py-3">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" />
           </span>
@@ -229,13 +229,13 @@ export function HudShell({
             </p>
           </div>
           {!centerOnly ? (
-            <div className="flex gap-1.5 lg:hidden">
+            <div className="flex gap-1 lg:hidden">
               <button
                 type="button"
                 onClick={() =>
                   setMobilePanel((p) => (p === "left" ? "none" : "left"))
                 }
-                className="glass-chip rounded-full px-3 py-1.5 text-[10px] uppercase tracking-wider text-[var(--color-accent)]"
+                className="glass-chip rounded-full px-2.5 py-1.5 text-[10px] uppercase tracking-wider text-[var(--color-accent)]"
               >
                 Menu
               </button>
@@ -244,7 +244,7 @@ export function HudShell({
                 onClick={() =>
                   setMobilePanel((p) => (p === "right" ? "none" : "right"))
                 }
-                className="glass-chip rounded-full px-3 py-1.5 text-[10px] uppercase tracking-wider text-[var(--color-accent)]"
+                className="glass-chip rounded-full px-2.5 py-1.5 text-[10px] uppercase tracking-wider text-[var(--color-accent)]"
               >
                 Info
               </button>
@@ -252,9 +252,9 @@ export function HudShell({
           ) : null}
         </div>
 
-        <div className="text-center">
+        <div className="min-w-0 flex-1 text-center sm:flex-none">
           <h1
-            className="text-sm uppercase tracking-[0.2em] text-[var(--color-accent-2)] sm:text-base md:text-lg"
+            className="truncate text-xs uppercase tracking-[0.16em] text-[var(--color-accent-2)] sm:text-sm md:text-base md:tracking-[0.2em]"
             style={{
               fontFamily: "var(--font-display), sans-serif",
               textShadow: "0 0 28px rgba(56,189,248,0.4)",
@@ -262,20 +262,15 @@ export function HudShell({
           >
             Alpha AI Agent
           </h1>
-          <p className="mt-0.5 text-[10px] uppercase tracking-[0.22em] text-[var(--color-muted)] sm:text-[11px]">
+          <p className="mt-0.5 hidden text-[10px] uppercase tracking-[0.22em] text-[var(--color-muted)] sm:block">
             Staff command console
           </p>
-          {email ? (
-            <p className="mt-0.5 hidden truncate text-[10px] text-[var(--color-muted)] sm:block">
-              {email}
-            </p>
-          ) : null}
         </div>
 
-        <div className="flex items-center justify-end gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-3">
           <Link
             href="/universe"
-            className="inline-flex items-center gap-1.5 rounded-2xl border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/10 px-2.5 py-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-accent-2)] transition hover:bg-[var(--color-accent)]/20 sm:px-3 sm:text-[11px]"
+            className="inline-flex items-center gap-1 rounded-xl border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/10 px-2 py-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-accent-2)] sm:rounded-2xl sm:px-3 sm:text-[11px]"
           >
             <Orbit size={14} />
             <span className="hidden xs:inline sm:inline">Universe</span>
@@ -286,7 +281,7 @@ export function HudShell({
           <button
             type="button"
             onClick={() => void signOut()}
-            className="glass-chip rounded-2xl p-2.5 text-[var(--color-muted)] transition hover:text-[var(--color-accent)]"
+            className="glass-chip rounded-xl p-2 text-[var(--color-muted)] transition hover:text-[var(--color-accent)] sm:rounded-2xl sm:p-2.5"
             aria-label="Sign out"
           >
             <LogOut size={16} />
