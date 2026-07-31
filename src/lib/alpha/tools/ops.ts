@@ -20,15 +20,24 @@ export const opsTools: AlphaTool[] = [
       },
     },
     async execute(args): Promise<ToolResult> {
-      const { data, error } = await db()
-        .from("notifications")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(Number(args.limit) || 20);
-      if (error) {
-        return { ok: false, summary: "Notifications query failed", error: error.message };
+      const tables = ["portal_notifications", "notifications"];
+      let last = "not found";
+      for (const table of tables) {
+        const { data, error } = await db()
+          .from(table)
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(Number(args.limit) || 20);
+        if (!error) {
+          return {
+            ok: true,
+            summary: `${data?.length ?? 0} notifications from ${table}`,
+            data,
+          };
+        }
+        last = error.message;
       }
-      return { ok: true, summary: `${data?.length ?? 0} notifications`, data };
+      return { ok: false, summary: "Notifications query failed", error: last };
     },
   },
   {

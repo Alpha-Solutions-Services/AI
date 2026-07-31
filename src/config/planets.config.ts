@@ -172,7 +172,8 @@ export const PLANETS: PlanetConfig[] = [
       process.env.NEXT_PUBLIC_LEARN_DISPATCH_URL?.trim() ||
       "https://learndispatch.alphasolutions.software",
     statusSource: "learn",
-    ModuleComponent: loadPlaceholder,
+    ModuleComponent: () =>
+      import("@/components/universe/modules/LearnModule"),
     enabled: true,
   },
   {
@@ -199,7 +200,8 @@ export const PLANETS: PlanetConfig[] = [
       process.env.NEXT_PUBLIC_PORTAL_URL?.trim() ||
       "https://portal.alphasolutions.software",
     statusSource: "portal",
-    ModuleComponent: loadPlaceholder,
+    ModuleComponent: () =>
+      import("@/components/universe/modules/PortalModule"),
     enabled: true,
   },
   {

@@ -1,6 +1,8 @@
 import { browserTools } from "@/lib/alpha/tools/browser";
+import { githubTools } from "@/lib/alpha/tools/github";
 import { learnDispatchTools } from "@/lib/alpha/tools/learndispatch";
 import { opsTools } from "@/lib/alpha/tools/ops";
+import { orgTools } from "@/lib/alpha/tools/org";
 import { portalTools } from "@/lib/alpha/tools/portal";
 import { tmsTools } from "@/lib/alpha/tools/tms";
 import type { AlphaTool, ToolContext, ToolResult } from "@/lib/alpha/tools/types";
@@ -9,10 +11,12 @@ import { webTools } from "@/lib/alpha/tools/web";
 import { getServiceRoleClient } from "@/lib/supabase/service-role";
 
 const ALL_TOOLS: AlphaTool[] = [
+  ...orgTools,
   ...portalTools,
   ...tmsTools,
   ...learnDispatchTools,
   ...opsTools,
+  ...githubTools,
   ...webTools,
   ...browserTools,
 ];

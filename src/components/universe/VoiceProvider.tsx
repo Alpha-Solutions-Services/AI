@@ -21,9 +21,7 @@ type VoiceContextValue = {
   supported: boolean;
   wakeAttempted: boolean;
   wakeFallbackReason: string | null;
-  /** Push-to-talk: start */
   startPtt: () => void;
-  /** Push-to-talk: stop & emit final transcript */
   stopPtt: () => void;
   speak: (text: string, onEnd?: () => void) => void;
   stopSpeak: () => void;
@@ -50,9 +48,19 @@ type SpeechRec = {
   onend: (() => void) | null;
 };
 
+function detectLang(): string {
+  try {
+    const nav = navigator.language || "en-US";
+    if (/^ur/i.test(nav)) return "ur-PK";
+    return "en-US";
+  } catch {
+    return "en-US";
+  }
+}
+
 /**
- * VoiceProvider — Web Speech baseline.
- * Swap internals later for OpenAI Realtime / Gemini Live without touching UI.
+ * VoiceProvider — Web Speech PTT with continuous capture while held,
+ * so short pauses mid-sentence are not cut off.
  */
 export function VoiceProvider({
   children,
@@ -76,6 +84,8 @@ export function VoiceProvider({
 
   const recRef = useRef<SpeechRec | null>(null);
   const pttActive = useRef(false);
+  const finalBuf = useRef("");
+  const interimBuf = useRef("");
   const onTranscriptRef = useRef(onTranscript);
   const analyserRaf = useRef(0);
   const streamRef = useRef<MediaStream | null>(null);
@@ -141,10 +151,14 @@ export function VoiceProvider({
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!Ctor || pttActive.current) return;
     pttActive.current = true;
+    finalBuf.current = "";
+    interimBuf.current = "";
+    setInterim("");
+
     const rec = new Ctor();
-    rec.continuous = false;
+    rec.continuous = true;
     rec.interimResults = true;
-    rec.lang = "en-US";
+    rec.lang = detectLang();
     rec.onresult = (ev) => {
       let interimText = "";
       let finalText = "";
@@ -154,19 +168,33 @@ export function VoiceProvider({
         if (row?.isFinal) finalText += piece;
         else interimText += piece;
       }
-      if (interimText) setInterim(interimText);
-      if (finalText.trim()) {
-        setInterim(finalText.trim());
-        onTranscriptRef.current?.(finalText.trim());
+      if (finalText) {
+        finalBuf.current = `${finalBuf.current} ${finalText}`.trim();
       }
+      interimBuf.current = interimText.trim();
+      const display = [finalBuf.current, interimBuf.current]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      setInterim(display);
     };
-    rec.onerror = () => {
+    rec.onerror = (ev) => {
+      if (ev?.error === "aborted" || ev?.error === "no-speech") return;
+      if (!pttActive.current) return;
       pttActive.current = false;
       setListening(false);
       stopMeter();
     };
     rec.onend = () => {
-      pttActive.current = false;
+      // Keep listening while PTT held (browser often ends segments)
+      if (pttActive.current) {
+        try {
+          rec.start();
+          return;
+        } catch {
+          /* fall through */
+        }
+      }
       setListening(false);
       stopMeter();
     };
@@ -181,95 +209,36 @@ export function VoiceProvider({
   }, []);
 
   const stopPtt = useCallback(() => {
+    pttActive.current = false;
     try {
       recRef.current?.stop();
     } catch {
       /* ignore */
     }
-    pttActive.current = false;
+    recRef.current = null;
     setListening(false);
     stopMeter();
+
+    const text = [finalBuf.current, interimBuf.current]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    finalBuf.current = "";
+    interimBuf.current = "";
+    setInterim("");
+    if (text.length >= 2) {
+      // brief delay so last finals land
+      window.setTimeout(() => onTranscriptRef.current?.(text), 120);
+    }
   }, []);
 
-  // Wake-word attempt — fall back to PTT if unreliable
   useEffect(() => {
     if (mode !== "wake" || !supported) return;
     setWakeAttempted(true);
-    const w = window as Window & {
-      SpeechRecognition?: new () => SpeechRec;
-      webkitSpeechRecognition?: new () => SpeechRec;
-    };
-    const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!Ctor) {
-      setWakeFallbackReason("SpeechRecognition unavailable");
-      setMode("ptt");
-      return;
-    }
-
-    let stopped = false;
-    const rec = new Ctor();
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.lang = "en-US";
-    let errors = 0;
-
-    rec.onresult = (ev) => {
-      let text = "";
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        text += ev.results[i]?.[0]?.transcript || "";
-      }
-      const lower = text.toLowerCase();
-      if (/\balpha\b/.test(lower)) {
-        const rest = lower.replace(/^.*\balpha\b[,:]?\s*/i, "").trim();
-        if (rest.length > 2) onTranscriptRef.current?.(rest);
-        else {
-          // wake only — start PTT-style capture
-          setInterim("Listening…");
-        }
-      }
-    };
-    rec.onerror = (ev) => {
-      errors += 1;
-      if (errors >= 2 || ev?.error === "not-allowed") {
-        setWakeFallbackReason(
-          `Wake mode unreliable (${ev?.error || "errors"}) — using push-to-talk`
-        );
-        setMode("ptt");
-        try {
-          rec.stop();
-        } catch {
-          /* ignore */
-        }
-      }
-    };
-    rec.onend = () => {
-      if (!stopped && mode === "wake") {
-        try {
-          rec.start();
-        } catch {
-          setWakeFallbackReason("Wake recognition ended — using push-to-talk");
-          setMode("ptt");
-        }
-      }
-    };
-
-    try {
-      rec.start();
-      setListening(true);
-    } catch {
-      setWakeFallbackReason("Could not start wake recognition — using PTT");
-      setMode("ptt");
-    }
-
-    return () => {
-      stopped = true;
-      try {
-        rec.stop();
-      } catch {
-        /* ignore */
-      }
-      setListening(false);
-    };
+    setWakeFallbackReason(
+      "Wake word is experimental — using push-to-talk (hold mic)"
+    );
+    setMode("ptt");
   }, [mode, supported]);
 
   const speak = useCallback((text: string, onEnd?: () => void) => {

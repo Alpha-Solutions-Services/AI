@@ -87,9 +87,7 @@ function PlanetOrb({
           {planet.subtitle}
         </p>
         {!planet.enabled ? (
-          <p className="text-[8px] uppercase tracking-wider text-slate-600">
-            Coming online
-          </p>
+          <p className="text-[8px] text-slate-600 opacity-70">Soon</p>
         ) : null}
       </motion.div>
     </button>

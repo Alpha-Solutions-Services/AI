@@ -62,34 +62,43 @@ export const learnDispatchTools: AlphaTool[] = [
   },
   {
     name: "ld_list_enrollments",
-    description: "List academy enrollments if the enrollments table exists.",
+    description:
+      "List academy students / enrollments from profiles (role=student) and academy_progress.",
     risk: "read",
     parameters: {
       type: "object",
       properties: {
         limit: { type: "number" },
         status: { type: "string" },
+        query: { type: "string" },
       },
     },
     async execute(args): Promise<ToolResult> {
-      const tables = ["academy_enrollments", "enrollments"];
-      let last = "not found";
-      for (const table of tables) {
-        let q = db().from(table).select("*").limit(Number(args.limit) || 20);
-        if (typeof args.status === "string" && args.status) {
-          q = q.eq("status", args.status);
-        }
-        const { data, error } = await q.order("created_at", { ascending: false });
-        if (!error) {
-          return {
-            ok: true,
-            summary: `${data?.length ?? 0} enrollments from ${table}`,
-            data,
-          };
-        }
-        last = error.message;
+      const limit = Number(args.limit) || 30;
+      const query = String(args.query || "").trim();
+      let q = db()
+        .from("profiles")
+        .select(
+          "id, full_name, email, role, enrollment_status, enrollment_plan, enrolled_at, batch_code, created_at"
+        )
+        .eq("role", "student")
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (typeof args.status === "string" && args.status) {
+        q = q.eq("enrollment_status", args.status);
       }
-      return { ok: false, summary: "Enrollments query failed", error: last };
+      if (query) {
+        q = q.or(`full_name.ilike.%${query}%,email.ilike.%${query}%`);
+      }
+      const { data, error } = await q;
+      if (error) {
+        return { ok: false, summary: "Enrollments query failed", error: error.message };
+      }
+      return {
+        ok: true,
+        summary: `${data?.length ?? 0} student enrollments`,
+        data,
+      };
     },
   },
 ];

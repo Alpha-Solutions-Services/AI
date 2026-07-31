@@ -250,12 +250,9 @@ export function CommandBar({ className = "" }: { className?: string }) {
           }}
           onTouchEnd={() => voice.stopPtt()}
           onClick={() => {
-            if (voice.listening) {
-              voice.stopPtt();
-              if (voice.interim.trim()) void send(voice.interim);
-            } else {
-              voice.startPtt();
-            }
+            // Toggle only — transcript emits from VoiceProvider on stopPtt
+            if (voice.listening) voice.stopPtt();
+            else voice.startPtt();
           }}
         >
           {voice.listening ? <MicOff size={16} /> : <Mic size={16} />}

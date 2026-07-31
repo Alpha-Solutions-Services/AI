@@ -29,6 +29,8 @@ export async function GET() {
     docsRes,
     runsRes,
     sessionsRes,
+    studentsRes,
+    carriersRes,
   ] = await Promise.all([
     db
       .from("dispatch_loads")
@@ -44,23 +46,37 @@ export async function GET() {
       .select("id, tool_name, status, created_at")
       .eq("user_id", session.user.id)
       .order("created_at", { ascending: false })
-      .limit(12),
+      .limit(40),
     db
       .from("academy_live_sessions")
       .select("id", { count: "exact", head: true }),
+    db
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "student"),
+    db
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "carrier"),
   ]);
 
   const activeLoads = loadsRes.count ?? 0;
   const openTickets = ticketsRes.count ?? 0;
   const docs = docsRes.count ?? 0;
   const liveSessions = sessionsRes.count ?? 0;
+  const students = studentsRes.count ?? 0;
+  const carriers = carriersRes.count ?? 0;
   const pendingRuns =
     (runsRes.data || []).filter((r) => r.status === "pending").length;
 
-  const modulesOnline = 4; // dispatch + portal + learn + knowledge paths exist
+  const modulesOnline = 5;
   const healthPercent = Math.min(
     100,
-    70 + (docs > 0 ? 8 : 0) + (activeLoads > 0 ? 8 : 0) + (openTickets >= 0 ? 6 : 0) + (pendingRuns === 0 ? 8 : 0)
+    70 +
+      (docs > 0 ? 8 : 0) +
+      (activeLoads > 0 ? 8 : 0) +
+      (openTickets >= 0 ? 6 : 0) +
+      (pendingRuns === 0 ? 8 : 0)
   );
 
   const overview = [
@@ -77,9 +93,21 @@ export async function GET() {
       delta: 0,
     },
     {
+      id: "students",
+      label: "Students",
+      value: String(students),
+      delta: 0,
+    },
+    {
       id: "knowledge",
       label: "Docs Indexed",
       value: String(docs),
+      delta: 0,
+    },
+    {
+      id: "carriers",
+      label: "Carriers",
+      value: String(carriers),
       delta: 0,
     },
     {
@@ -90,7 +118,10 @@ export async function GET() {
     },
   ];
 
-  const activity = (runsRes.data || []).map((r) => ({
+  const activity = (runsRes.data || [])
+    .filter((r) => !(r.tool_name === "web_search" && r.status === "failed"))
+    .slice(0, 10)
+    .map((r) => ({
     id: r.id,
     type: "agent" as const,
     title: String(r.tool_name || "tool"),
@@ -99,11 +130,14 @@ export async function GET() {
     planetId:
       String(r.tool_name || "").startsWith("tms_")
         ? "dispatch"
-        : String(r.tool_name || "").startsWith("portal_")
+        : String(r.tool_name || "").startsWith("portal_") ||
+            String(r.tool_name || "").startsWith("org_")
           ? "portal"
           : String(r.tool_name || "").startsWith("ld_")
             ? "learn-academy"
-            : "intelligence",
+            : String(r.tool_name || "").startsWith("github_")
+              ? "intelligence"
+              : "intelligence",
   }));
 
   return NextResponse.json({

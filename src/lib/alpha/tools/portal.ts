@@ -50,16 +50,19 @@ export const portalTools: AlphaTool[] = [
         query: { type: "string" },
         limit: { type: "number" },
       },
-      required: ["query"],
+      required: [],
     },
     async execute(args): Promise<ToolResult> {
       const query = String(args.query || "").trim();
-      const { data, error } = await db()
+      let q = db()
         .from("portal_projects")
         .select("id, title, status, progress, client_email, category, updated_at")
-        .or(`title.ilike.%${query}%,client_email.ilike.%${query}%`)
         .order("updated_at", { ascending: false })
         .limit(Number(args.limit) || 15);
+      if (query) {
+        q = q.or(`title.ilike.%${query}%,client_email.ilike.%${query}%`);
+      }
+      const { data, error } = await q;
       if (error) return { ok: false, summary: "Project search failed", error: error.message };
       return { ok: true, summary: `Found ${data?.length ?? 0} projects`, data };
     },

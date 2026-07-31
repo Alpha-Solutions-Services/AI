@@ -226,7 +226,7 @@ export function VoiceDock({
       }
       interimBufRef.current = "";
       emitTranscript(buf);
-    }, 650);
+    }, 1600);
   }
 
   function stopAllCapture() {
@@ -406,20 +406,20 @@ export function VoiceDock({
           heardSpeech = true;
           signalBargeIn();
           if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-          // Faster pause → send (~550ms of quiet)
+          // Longer pause so mid-sentence breath doesn't cut words
           silenceTimerRef.current = setTimeout(() => {
             if (heardSpeech) finishSegment();
-          }, 550);
+          }, 1400);
         }
       });
 
-      // Max segment length — shorter for snappier turns
+      // Longer max segment for full sentences
       const maxTimer = setTimeout(() => {
         if (heardSpeech) finishSegment();
         else if (whisperLoopRef.current && liveRef.current) {
           finishSegment();
         }
-      }, 7000);
+      }, 15000);
 
       recorder.onstop = () => {
         clearTimeout(maxTimer);

@@ -118,12 +118,10 @@ export function UniverseRightPanel() {
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-300">
           Live overview
         </h2>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {(overview.length
             ? overview
-            : [
-                { id: "x", label: "Status", value: "—", delta: 0 },
-              ]
+            : [{ id: "x", label: "Status", value: "—", delta: 0 }]
           ).map((m) => (
             <div
               key={m.id}
