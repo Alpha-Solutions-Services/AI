@@ -189,12 +189,12 @@ export function AlphaChat() {
         >
           <div
             className={
-              showHeroOrb ? "w-full max-w-[360px]" : "w-[140px] sm:w-[170px]"
+              showHeroOrb ? "w-full max-w-[380px]" : "w-[150px] sm:w-[180px]"
             }
           >
             <SpeakingOrb mode={mode} level={level} />
           </div>
-          <p className="mt-1 text-center text-[9px] font-semibold uppercase tracking-[0.32em] text-[var(--color-accent-2)]/80">
+          <p className="mt-1.5 text-center text-[9px] font-semibold uppercase tracking-[0.32em] text-[var(--color-accent-2)]/85">
             {mode === "listening"
               ? "Listening · سن رہا ہے"
               : mode === "speaking"
@@ -205,7 +205,7 @@ export function AlphaChat() {
           </p>
           {(listening || interim) && (
             <p
-              className="glass-chip mt-2 max-w-lg rounded-2xl px-4 py-2.5 text-center text-sm text-[var(--color-accent-2)]"
+              className="glass-strong mt-2.5 max-w-lg rounded-2xl px-4 py-3 text-center text-sm text-[var(--color-accent-2)]"
               dir="auto"
             >
               {interim || "…"}
@@ -213,16 +213,16 @@ export function AlphaChat() {
           )}
         </div>
 
-        <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pb-2">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-2">
           {messages.length === 0 && !listening ? (
-            <div className="mx-auto grid max-w-2xl grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="mx-auto grid max-w-2xl grid-cols-1 gap-2.5 sm:grid-cols-2">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => void send(s)}
                   dir="auto"
-                  className="glass-chip rounded-2xl px-3 py-3 text-left text-[13px] text-[var(--color-chrome)] transition hover:border-[var(--color-border-glow)] hover:bg-[var(--color-accent-dim)]"
+                  className="glass-chip rounded-3xl px-3.5 py-3.5 text-left text-[13px] text-[var(--color-chrome)] transition hover:border-[var(--color-border-glow)] hover:bg-white/[0.06]"
                 >
                   {s}
                 </button>
@@ -236,9 +236,9 @@ export function AlphaChat() {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               dir="auto"
-              className={`mx-auto max-w-2xl whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-[14px] leading-relaxed ${
+              className={`mx-auto max-w-2xl whitespace-pre-wrap rounded-3xl px-4 py-3 text-[14px] leading-relaxed ${
                 m.role === "user"
-                  ? "ml-auto border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/12 text-[var(--color-text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-md"
+                  ? "glass-strong ml-auto border-[var(--color-accent)]/35 text-[var(--color-text)]"
                   : m.role === "assistant"
                     ? "glass-chip mr-auto text-[var(--color-text)]"
                     : "text-[var(--color-muted)]"
@@ -285,7 +285,7 @@ export function AlphaChat() {
       </div>
 
       <form
-        className="mt-auto border-t border-[var(--color-border)] bg-[rgba(5,10,18,0.55)] px-3 py-3 backdrop-blur-xl"
+        className="mt-auto border-t border-[var(--color-border)] bg-[rgba(3,7,18,0.45)] px-3 py-3.5 backdrop-blur-2xl"
         onSubmit={(e) => {
           e.preventDefault();
           void send(text);
@@ -309,14 +309,14 @@ export function AlphaChat() {
               void send(cleaned);
             }}
           />
-          <div className="flex items-end gap-2">
+          <div className="flex items-end gap-2.5">
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={2}
               dir="auto"
               placeholder="Ask Alpha AI Agent anything…"
-              className="glass-chip max-h-28 min-h-[44px] flex-1 resize-none rounded-2xl px-3.5 py-2.5 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)]/55"
+              className="glass-chip max-h-28 min-h-[48px] flex-1 resize-none rounded-2xl px-4 py-3 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)]/55"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -327,7 +327,7 @@ export function AlphaChat() {
             <button
               type="submit"
               disabled={busy || !text.trim()}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-accent)]/50 bg-[var(--color-accent)] text-[#050a12] shadow-[var(--glow-sm)] disabled:opacity-40"
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-accent)]/45 bg-[var(--color-accent)] text-[#030712] shadow-[var(--glow-sm)] transition disabled:opacity-40"
               aria-label="Send"
             >
               <Send size={16} />

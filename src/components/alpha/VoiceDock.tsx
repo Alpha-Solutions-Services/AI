@@ -497,10 +497,10 @@ export function VoiceDock({
           type="button"
           disabled={uploading}
           onClick={() => void toggleLive()}
-          className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2.5 rounded-2xl border px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] transition sm:flex-none sm:min-w-[12.5rem] ${
+          className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2.5 rounded-2xl border px-4 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] transition sm:flex-none sm:min-w-[12.5rem] ${
             live
-              ? "border-emerald-400/50 bg-emerald-400/15 text-emerald-300 shadow-[0_0_28px_rgba(52,211,153,0.3)] backdrop-blur-md"
-              : "glass-chip border-[var(--color-accent)]/40 text-[var(--color-accent-2)] hover:border-[var(--color-accent)]"
+              ? "border-emerald-400/45 bg-emerald-400/15 text-emerald-300 shadow-[0_0_32px_rgba(52,211,153,0.28)] backdrop-blur-xl"
+              : "glass-strong border-[var(--color-accent)]/40 text-[var(--color-accent-2)] hover:border-[var(--color-accent)]"
           } disabled:opacity-40`}
           aria-pressed={live}
         >
@@ -511,7 +511,7 @@ export function VoiceDock({
         <button
           type="button"
           onClick={() => onSpeakEnabledChange(!speakEnabled)}
-          className={`glass-chip inline-flex h-12 items-center gap-2 rounded-2xl px-3 text-xs uppercase tracking-wider ${
+          className={`glass-chip inline-flex h-12 items-center gap-2 rounded-2xl px-3.5 text-xs uppercase tracking-wider ${
             speakEnabled
               ? "text-[var(--color-accent)]"
               : "text-[var(--color-muted)]"
