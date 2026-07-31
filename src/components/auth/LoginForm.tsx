@@ -95,14 +95,14 @@ export function LoginForm() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md border border-[var(--color-border)] bg-[var(--color-surface)]/60 p-8 shadow-[var(--glow-md)] backdrop-blur-sm">
+    <div className="glass-strong mx-auto w-full max-w-md rounded-3xl p-8 shadow-[var(--glow-md)]">
       <div className="mb-8 flex flex-col items-center text-center">
         <Image
           src="/alpha-logo.png"
           alt="Alpha"
           width={72}
           height={72}
-          className="mb-4 rounded-xl"
+          className="mb-4 rounded-2xl"
           priority
         />
         <p
@@ -123,7 +123,7 @@ export function LoginForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Staff email"
-          className="w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          className="glass-chip w-full rounded-2xl px-4 py-3.5 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]/55"
         />
         <input
           type="password"
@@ -132,13 +132,13 @@ export function LoginForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Password"
-          className="w-full border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          className="glass-chip w-full rounded-2xl px-4 py-3.5 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]/55"
         />
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
         <button
           type="submit"
           disabled={busy}
-          className="w-full bg-[var(--color-accent)] py-3 text-sm font-semibold text-[#05080f] disabled:opacity-50"
+          className="w-full rounded-2xl bg-[var(--color-accent)] py-3.5 text-sm font-semibold text-[#030712] shadow-[var(--glow-sm)] disabled:opacity-50"
         >
           {busy ? "Signing in…" : "Sign in"}
         </button>
@@ -147,7 +147,7 @@ export function LoginForm() {
       <button
         type="button"
         onClick={() => void google()}
-        className="mt-3 w-full border border-[var(--color-border)] py-3 text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-2)]"
+        className="glass-chip mt-3 w-full rounded-2xl py-3.5 text-sm text-[var(--color-text)] hover:border-[var(--color-border-glow)]"
       >
         Continue with Google
       </button>

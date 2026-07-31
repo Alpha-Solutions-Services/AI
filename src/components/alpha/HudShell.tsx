@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   Activity,
   BarChart3,
@@ -42,28 +42,39 @@ const BOTTOM_NAV = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+/** Stable sparkline seed — Math.random() in useState breaks hydration. */
+const STABLE_TREND = [
+  18, 22, 19, 24, 21, 26, 20, 23, 25, 19, 22, 27, 24, 21, 18, 23, 26, 22, 20, 25,
+  23, 21, 24, 22,
+];
+
 function Clock() {
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
+    setNow(new Date());
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
   return (
     <div className="text-right leading-tight">
       <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-chrome)]">
-        {now.toLocaleDateString(undefined, {
-          weekday: "long",
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        })}
+        {now
+          ? now.toLocaleDateString(undefined, {
+              weekday: "long",
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
+          : "—"}
       </p>
-      <p className="font-mono text-sm text-[var(--color-accent-2)] tabular-nums">
-        {now.toLocaleTimeString(undefined, {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        })}
+      <p className="font-mono text-sm tabular-nums text-[var(--color-accent-2)]">
+        {now
+          ? now.toLocaleTimeString(undefined, {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })
+          : "--:--:--"}
       </p>
     </div>
   );
@@ -85,29 +96,31 @@ function MetricRing({
   const stroke = gold ? "var(--color-gold)" : "var(--color-accent)";
   return (
     <div className="flex flex-col items-center gap-1">
-      <svg width="52" height="52" className="-rotate-90">
-        <circle
-          cx="26"
-          cy="26"
-          r={r}
-          fill="none"
-          stroke="rgba(0,191,255,0.12)"
-          strokeWidth="3"
-        />
-        <circle
-          cx="26"
-          cy="26"
-          r={r}
-          fill="none"
-          stroke={stroke}
-          strokeWidth="3"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          className="transition-[stroke-dashoffset] duration-700 ease-out"
-          style={{ filter: `drop-shadow(0 0 4px ${stroke})` }}
-        />
-      </svg>
+      <div className="glass-chip rounded-full p-1.5">
+        <svg width="52" height="52" className="-rotate-90">
+          <circle
+            cx="26"
+            cy="26"
+            r={r}
+            fill="none"
+            stroke="rgba(56,189,248,0.12)"
+            strokeWidth="3.5"
+          />
+          <circle
+            cx="26"
+            cy="26"
+            r={r}
+            fill="none"
+            stroke={stroke}
+            strokeWidth="3.5"
+            strokeDasharray={c}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            className="transition-[stroke-dashoffset] duration-700 ease-out"
+            style={{ filter: `drop-shadow(0 0 5px ${stroke})` }}
+          />
+        </svg>
+      </div>
       <p className="text-[10px] uppercase tracking-wider text-[var(--color-muted)]">
         {label}
       </p>
@@ -125,16 +138,17 @@ function useLiveMetrics() {
   const [tasks, setTasks] = useState(1287);
   const [success, setSuccess] = useState(98.6);
   const [latency, setLatency] = useState(0.83);
-  const [trend, setTrend] = useState<number[]>(() =>
-    Array.from({ length: 24 }, () => 18 + Math.random() * 14)
-  );
+  const [trend, setTrend] = useState<number[]>(STABLE_TREND);
   const [procPulse, setProcPulse] = useState(0);
   const [docs, setDocs] = useState<number | null>(null);
   const [uptime, setUptime] = useState("00:00:00");
   const startRef = useRef(Date.now());
+  const mountedRef = useRef(false);
 
   useEffect(() => {
+    mountedRef.current = true;
     const tick = setInterval(() => {
+      if (!mountedRef.current) return;
       setCpu((v) => Math.max(12, Math.min(68, v + (Math.random() - 0.48) * 6)));
       setMem((v) => Math.max(28, Math.min(78, v + (Math.random() - 0.5) * 4)));
       setNet((v) => Math.max(40, Math.min(96, v + (Math.random() - 0.45) * 8)));
@@ -153,7 +167,10 @@ function useLiveMetrics() {
       const ss = String(elapsed % 60).padStart(2, "0");
       setUptime(`${hh}:${mm}:${ss}`);
     }, 1600);
-    return () => clearInterval(tick);
+    return () => {
+      mountedRef.current = false;
+      clearInterval(tick);
+    };
   }, []);
 
   useEffect(() => {
@@ -194,10 +211,10 @@ export function LeftHudPanel() {
   ];
 
   return (
-    <aside className="hud-glass flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-3 sm:p-4">
+    <aside className="hud-glass flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-3.5 sm:p-4">
       <div className="flex items-center justify-between">
         <p className="hud-panel-title">Live systems</p>
-        <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider text-emerald-400">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-[9px] uppercase tracking-wider text-emerald-300 backdrop-blur-md">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
           Live
         </span>
@@ -208,7 +225,7 @@ export function LeftHudPanel() {
         <ul className="space-y-2.5">
           {caps.map((cap) => (
             <li key={cap.title} className="flex gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--color-border)] bg-[var(--color-accent-dim)] text-[var(--color-accent)]">
+              <div className="glass-strong flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-[var(--color-accent)]">
                 <cap.icon size={16} />
               </div>
               <div>
@@ -227,7 +244,7 @@ export function LeftHudPanel() {
           <MetricRing label="Memory" value={mem} />
           <MetricRing label="Network" value={net} gold />
         </div>
-        <p className="mt-2 font-mono text-[10px] text-[var(--color-muted)]">
+        <p className="mt-2.5 font-mono text-[10px] text-[var(--color-muted)]">
           Session uptime {uptime}
           {docs != null ? ` · ${docs} docs indexed` : ""}
         </p>
@@ -241,19 +258,21 @@ export function LeftHudPanel() {
             return (
               <li
                 key={p.name}
-                className="flex items-center gap-2 border border-[var(--color-border)]/60 bg-black/20 px-2.5 py-2 text-[11px] text-[var(--color-chrome)]"
+                className="glass-chip flex items-center gap-2 rounded-2xl px-3 py-2.5 text-[11px] text-[var(--color-chrome)]"
               >
                 <span
                   className={`h-1.5 w-1.5 shrink-0 rounded-full ${
                     active
                       ? "bg-emerald-400 shadow-[0_0_8px_#34d399]"
-                      : "bg-[var(--color-gold)] shadow-[0_0_8px_#ffd54f]"
+                      : "bg-[var(--color-gold)] shadow-[0_0_8px_#fbbf24]"
                   }`}
                 />
                 <span className="truncate">{p.name}</span>
                 <span
-                  className={`ml-auto text-[9px] uppercase tracking-wider ${
-                    active ? "text-emerald-400/90" : "text-[var(--color-gold)]"
+                  className={`ml-auto rounded-full px-2 py-0.5 text-[9px] uppercase tracking-wider ${
+                    active
+                      ? "bg-emerald-400/10 text-emerald-300"
+                      : "bg-[var(--color-gold-dim)] text-[var(--color-gold)]"
                   }`}
                 >
                   {active ? "Running" : "Sync"}
@@ -269,6 +288,7 @@ export function LeftHudPanel() {
 
 export function RightHudPanel() {
   const { tasks, success, latency, trend } = useLiveMetrics();
+  const gradId = useId().replace(/:/g, "");
   const directives = [
     { icon: Shield, label: "Secure by default" },
     { icon: Briefcase, label: "Business focused" },
@@ -286,10 +306,10 @@ export function RightHudPanel() {
   const area = `0,40 ${points} 120,40`;
 
   return (
-    <aside className="hud-glass flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-3 sm:p-4">
+    <aside className="hud-glass flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-3.5 sm:p-4">
       <div className="flex items-center justify-between">
         <p className="hud-panel-title">Mission feed</p>
-        <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider text-emerald-400">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-[9px] uppercase tracking-wider text-emerald-300 backdrop-blur-md">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
           Online
         </span>
@@ -301,7 +321,7 @@ export function RightHudPanel() {
           Help Alpha Solutions staff think, plan, and execute across Portal, TMS,
           Learn Dispatch, and the open web — with confirm-before-write control.
         </p>
-        <p className="mt-3 inline-flex items-center gap-1.5 border border-[var(--color-gold)]/30 bg-[var(--color-gold-dim)] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.2em] text-[var(--color-gold)]">
+        <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--color-gold)]/30 bg-[var(--color-gold-dim)] px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-[var(--color-gold)] backdrop-blur-md">
           <Zap size={10} /> J.A.R.V.I.S. Mode
         </p>
       </div>
@@ -312,7 +332,7 @@ export function RightHudPanel() {
           {directives.map((d) => (
             <li
               key={d.label}
-              className="flex items-center gap-2.5 border border-[var(--color-border)]/70 px-2.5 py-2 text-xs text-[var(--color-text)]"
+              className="glass-chip flex items-center gap-2.5 rounded-2xl px-3 py-2.5 text-xs text-[var(--color-text)]"
             >
               <d.icon size={14} className="text-[var(--color-accent)]" />
               {d.label}
@@ -331,7 +351,7 @@ export function RightHudPanel() {
           ].map((s) => (
             <div
               key={s.k}
-              className="border border-[var(--color-border)] bg-black/25 px-2 py-2 text-center"
+              className="glass-strong rounded-2xl px-2 py-2.5 text-center"
             >
               <p className="font-mono text-sm tabular-nums text-[var(--color-text)] sm:text-base">
                 {s.v}
@@ -350,7 +370,7 @@ export function RightHudPanel() {
           ].map((s) => (
             <div
               key={s.k}
-              className="flex items-center justify-between border border-[var(--color-border)] bg-black/25 px-3 py-2"
+              className="glass-chip flex items-center justify-between rounded-2xl px-3 py-2.5"
             >
               <span className="flex items-center gap-2 text-[11px] text-[var(--color-muted)]">
                 <s.icon size={12} className="text-[var(--color-accent)]" />
@@ -367,6 +387,7 @@ export function RightHudPanel() {
           viewBox="0 0 120 40"
           preserveAspectRatio="none"
           aria-hidden
+          suppressHydrationWarning
         >
           <polyline
             fill="none"
@@ -376,11 +397,11 @@ export function RightHudPanel() {
             opacity="0.9"
             className="transition-all duration-500"
           />
-          <polyline fill="url(#alphaTrend)" stroke="none" points={area} opacity="0.2" />
+          <polyline fill={`url(#${gradId})`} stroke="none" points={area} opacity="0.22" />
           <defs>
-            <linearGradient id="alphaTrend" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#00BFFF" />
-              <stop offset="100%" stopColor="#00BFFF" stopOpacity="0" />
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#38BDF8" />
+              <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
             </linearGradient>
           </defs>
         </svg>
@@ -416,19 +437,16 @@ export function HudShell({
 
   return (
     <div className="relative flex min-h-[100dvh] flex-col overflow-hidden">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(0,191,255,0.1),_transparent_55%),linear-gradient(180deg,#050a12_0%,#071018_100%)]"
-      />
-      <div aria-hidden className="hud-grid pointer-events-none absolute inset-0 opacity-40" />
-      <div aria-hidden className="hud-scanlines pointer-events-none absolute inset-0" />
+      <div aria-hidden className="alpha-ambient pointer-events-none absolute inset-0" />
+      <div aria-hidden className="hud-grid pointer-events-none absolute inset-0" />
+      <div aria-hidden className="hud-scanlines pointer-events-none absolute inset-0 opacity-60" />
 
       {/* Top bar */}
-      <header className="relative z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-[var(--color-border)] bg-[#050a12]/80 px-3 py-2.5 backdrop-blur-xl sm:px-5">
+      <header className="relative z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-[var(--color-border)] bg-[rgba(3,7,18,0.55)] px-3 py-3 backdrop-blur-2xl sm:px-5">
         <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" />
           </span>
           <div className="hidden sm:block">
             <p className="text-[9px] uppercase tracking-[0.24em] text-[var(--color-muted)]">
@@ -439,13 +457,13 @@ export function HudShell({
             </p>
           </div>
           {!centerOnly ? (
-            <div className="flex gap-1 lg:hidden">
+            <div className="flex gap-1.5 lg:hidden">
               <button
                 type="button"
                 onClick={() =>
                   setMobilePanel((p) => (p === "left" ? "none" : "left"))
                 }
-                className="border border-[var(--color-border)] px-2 py-1 text-[9px] uppercase tracking-wider text-[var(--color-accent)]"
+                className="glass-chip rounded-full px-3 py-1.5 text-[9px] uppercase tracking-wider text-[var(--color-accent)]"
               >
                 Caps
               </button>
@@ -454,7 +472,7 @@ export function HudShell({
                 onClick={() =>
                   setMobilePanel((p) => (p === "right" ? "none" : "right"))
                 }
-                className="border border-[var(--color-border)] px-2 py-1 text-[9px] uppercase tracking-wider text-[var(--color-accent)]"
+                className="glass-chip rounded-full px-3 py-1.5 text-[9px] uppercase tracking-wider text-[var(--color-accent)]"
               >
                 Mission
               </button>
@@ -464,10 +482,10 @@ export function HudShell({
 
         <div className="text-center">
           <h1
-            className="text-sm uppercase tracking-[0.18em] text-[var(--color-accent-2)] sm:text-base md:text-lg"
+            className="text-sm uppercase tracking-[0.2em] text-[var(--color-accent-2)] sm:text-base md:text-lg"
             style={{
               fontFamily: "var(--font-display), sans-serif",
-              textShadow: "0 0 24px rgba(0,191,255,0.45)",
+              textShadow: "0 0 28px rgba(56,189,248,0.4)",
             }}
           >
             Alpha AI Agent
@@ -489,7 +507,7 @@ export function HudShell({
           <button
             type="button"
             onClick={() => void signOut()}
-            className="border border-[var(--color-border)] p-2 text-[var(--color-muted)] hover:text-[var(--color-accent)]"
+            className="glass-chip rounded-2xl p-2.5 text-[var(--color-muted)] transition hover:text-[var(--color-accent)]"
             aria-label="Sign out"
           >
             <LogOut size={16} />
@@ -500,7 +518,7 @@ export function HudShell({
       {/* Body */}
       <div
         className={clsx(
-          "relative z-10 mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-2 overflow-hidden p-2 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] sm:gap-3 sm:p-3 lg:pb-3",
+          "relative z-10 mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-2.5 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] sm:gap-3.5 sm:p-3.5 lg:pb-3.5",
           !centerOnly &&
             "lg:grid lg:grid-cols-[220px_minmax(0,1fr)_220px] xl:grid-cols-[260px_minmax(0,1fr)_260px] 2xl:grid-cols-[280px_minmax(0,1fr)_280px]"
         )}
@@ -539,7 +557,7 @@ export function HudShell({
       {mobilePanel !== "none" ? (
         <button
           type="button"
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-black/55 backdrop-blur-sm lg:hidden"
           aria-label="Close panel"
           onClick={() => setMobilePanel("none")}
         />
@@ -547,11 +565,11 @@ export function HudShell({
 
       {/* Bottom dock */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--color-border)] bg-[#050a12]/95 backdrop-blur-xl"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--color-border)] bg-[rgba(3,7,18,0.7)] backdrop-blur-2xl"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         aria-label="Primary"
       >
-        <ul className="mx-auto flex max-w-[1600px] gap-0.5 overflow-x-auto px-1 py-1.5 sm:justify-center sm:gap-1 sm:px-3">
+        <ul className="mx-auto flex max-w-[1600px] gap-1.5 overflow-x-auto px-2 py-2 sm:justify-center sm:gap-2 sm:px-3">
           {BOTTOM_NAV.map((item) => {
             const Icon = item.icon;
             const active = item.view
@@ -566,10 +584,10 @@ export function HudShell({
                 <Link
                   href={item.href}
                   className={clsx(
-                    "flex flex-col items-center gap-1 border px-1.5 py-2 text-center transition sm:min-w-[5.5rem]",
+                    "flex flex-col items-center gap-1 rounded-2xl border px-1.5 py-2.5 text-center transition sm:min-w-[5.75rem]",
                     active
-                      ? "border-[var(--color-accent)]/50 bg-[var(--color-accent-dim)] text-[var(--color-accent-2)] shadow-[0_0_16px_rgba(0,191,255,0.25)]"
-                      : "border-transparent text-[var(--color-muted)] hover:border-[var(--color-border)] hover:text-[var(--color-chrome)]"
+                      ? "glass-strong border-[var(--color-accent)]/40 text-[var(--color-accent-2)] shadow-[0_0_22px_rgba(56,189,248,0.22)]"
+                      : "border-transparent text-[var(--color-muted)] hover:border-[var(--color-border)] hover:bg-white/[0.04] hover:text-[var(--color-chrome)]"
                   )}
                 >
                   <Icon size={16} strokeWidth={active ? 2.25 : 1.75} />

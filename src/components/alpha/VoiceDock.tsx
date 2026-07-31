@@ -7,6 +7,7 @@ type SpeechRecognitionLike = {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
+  maxAlternatives?: number;
   start: () => void;
   stop: () => void;
   abort?: () => void;
@@ -24,6 +25,8 @@ type SpeechRecognitionLike = {
     | null;
   onerror: ((ev?: { error?: string }) => void) | null;
   onend: (() => void) | null;
+  onspeechstart?: (() => void) | null;
+  onspeechend?: (() => void) | null;
 };
 
 declare global {
@@ -49,6 +52,7 @@ export function VoiceDock({
   onInterim,
   onListeningChange,
   onLevel,
+  onBargeIn,
 }: {
   disabled?: boolean;
   speakEnabled: boolean;
@@ -57,6 +61,8 @@ export function VoiceDock({
   onInterim?: (text: string) => void;
   onListeningChange?: (listening: boolean) => void;
   onLevel?: (level: number) => void;
+  /** Fired when user starts speaking — stop TTS so live talk feels instant */
+  onBargeIn?: () => void;
 }) {
   const [live, setLive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -77,10 +83,28 @@ export function VoiceDock({
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const whisperLoopRef = useRef(false);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const interimBufRef = useRef("");
+  const interimFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bargedRef = useRef(false);
+  const onBargeInRef = useRef(onBargeIn);
+  const onTranscriptRef = useRef(onTranscript);
+  const onInterimRef = useRef(onInterim);
 
   useEffect(() => {
     disabledRef.current = !!disabled;
   }, [disabled]);
+
+  useEffect(() => {
+    onBargeInRef.current = onBargeIn;
+  }, [onBargeIn]);
+
+  useEffect(() => {
+    onTranscriptRef.current = onTranscript;
+  }, [onTranscript]);
+
+  useEffect(() => {
+    onInterimRef.current = onInterim;
+  }, [onInterim]);
 
   useEffect(() => {
     return () => {
@@ -91,6 +115,7 @@ export function VoiceDock({
       if (mediaRef.current?.state === "recording") mediaRef.current.stop();
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+      if (interimFlushRef.current) clearTimeout(interimFlushRef.current);
       stopLevelMeter();
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
@@ -101,9 +126,11 @@ export function VoiceDock({
     setLive(v);
     onListeningChange?.(v);
     if (!v) {
-      onInterim?.("");
+      onInterimRef.current?.("");
       onLevel?.(0);
       setModeLabel(null);
+      interimBufRef.current = "";
+      bargedRef.current = false;
     }
   }
 
@@ -121,9 +148,11 @@ export function VoiceDock({
   ) {
     try {
       const ctx = new AudioContext();
+      void ctx.resume().catch(() => undefined);
       const source = ctx.createMediaStreamSource(stream);
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 512;
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.55;
       source.connect(analyser);
       audioCtxRef.current = ctx;
       analyserRef.current = analyser;
@@ -133,8 +162,8 @@ export function VoiceDock({
         let sum = 0;
         for (let i = 0; i < data.length; i++) sum += data[i];
         const avg = sum / data.length / 255;
-        onLevel?.(Math.min(1, avg * 2.4));
-        onLoud?.(avg > 0.045);
+        onLevel?.(Math.min(1, avg * 3.2));
+        onLoud?.(avg > 0.038);
         levelRafRef.current = requestAnimationFrame(tick);
       };
       tick();
@@ -143,16 +172,42 @@ export function VoiceDock({
     }
   }
 
+  function signalBargeIn() {
+    if (bargedRef.current) return;
+    bargedRef.current = true;
+    onBargeInRef.current?.();
+  }
+
   function emitTranscript(text: string) {
     const cleaned = text.trim();
     if (!cleaned || cleaned.length < 2) return;
+    // Drop while a reply is still generating — keep mic hot, retry soon via pause flush
+    if (disabledRef.current) return;
     const now = Date.now();
-    if (cleaned === lastSentRef.current && now - lastSentAtRef.current < 4000) {
+    if (cleaned === lastSentRef.current && now - lastSentAtRef.current < 2200) {
       return;
     }
     lastSentRef.current = cleaned;
     lastSentAtRef.current = now;
-    onTranscript(cleaned);
+    interimBufRef.current = "";
+    bargedRef.current = false;
+    onTranscriptRef.current(cleaned);
+  }
+
+  function scheduleInterimFlush() {
+    if (interimFlushRef.current) clearTimeout(interimFlushRef.current);
+    // Fast pause → send (browsers can be slow with isFinal)
+    interimFlushRef.current = setTimeout(() => {
+      const buf = interimBufRef.current.trim();
+      if (!buf || buf.length < 2) return;
+      if (disabledRef.current) {
+        // Retry quickly once generation finishes
+        scheduleInterimFlush();
+        return;
+      }
+      interimBufRef.current = "";
+      emitTranscript(buf);
+    }, 650);
   }
 
   function stopAllCapture() {
@@ -170,6 +225,7 @@ export function VoiceDock({
     mediaRef.current = null;
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+    if (interimFlushRef.current) clearTimeout(interimFlushRef.current);
     stopLevelMeter();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -183,9 +239,13 @@ export function VoiceDock({
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
+    recognition.maxAlternatives = 1;
+
+    recognition.onspeechstart = () => {
+      signalBargeIn();
+    };
 
     recognition.onresult = (ev) => {
-      if (disabledRef.current) return;
       let interim = "";
       let finalPiece = "";
       for (let i = ev.resultIndex; i < ev.results.length; i++) {
@@ -194,9 +254,19 @@ export function VoiceDock({
         if (row?.isFinal) finalPiece += piece;
         else interim += piece;
       }
-      if (interim) onInterim?.(interim);
+
+      if (interim || finalPiece) signalBargeIn();
+
+      if (interim) {
+        interimBufRef.current = interim.trim();
+        onInterimRef.current?.(interimBufRef.current);
+        scheduleInterimFlush();
+      }
+
       if (finalPiece.trim()) {
-        onInterim?.(finalPiece.trim());
+        if (interimFlushRef.current) clearTimeout(interimFlushRef.current);
+        interimBufRef.current = "";
+        onInterimRef.current?.(finalPiece.trim());
         emitTranscript(finalPiece.trim());
       }
     };
@@ -212,7 +282,7 @@ export function VoiceDock({
     };
 
     recognition.onend = () => {
-      // Keep live session alive until user turns it off
+      // Keep live session alive until user turns it off — restart immediately
       if (liveRef.current) {
         if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
         restartTimerRef.current = setTimeout(() => {
@@ -222,16 +292,24 @@ export function VoiceDock({
           } catch {
             /* already started */
           }
-        }, disabledRef.current ? 900 : 280);
+        }, 80);
       }
     };
 
     recognitionRef.current = recognition;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       streamRef.current = stream;
-      startLevelMeter(stream);
+      startLevelMeter(stream, (loud) => {
+        if (loud) signalBargeIn();
+      });
     } catch {
       /* meter optional */
     }
@@ -240,7 +318,7 @@ export function VoiceDock({
     setModeLabel("live");
     setLiveState(true);
     setMicError(null);
-    onInterim?.("Live talk on — just speak");
+    onInterimRef.current?.("Live talk on — just speak");
     return true;
   }
 
@@ -249,10 +327,22 @@ export function VoiceDock({
     setModeLabel("whisper");
     setLiveState(true);
     setMicError(null);
-    onInterim?.("Live talk on — speak, pause to send");
+    onInterimRef.current?.("Live talk on — speak, pause to send");
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
     streamRef.current = stream;
+
+    const mime =
+      typeof MediaRecorder !== "undefined" &&
+      MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
 
     const runSegment = () => {
       if (!whisperLoopRef.current || !liveRef.current) return;
@@ -261,7 +351,12 @@ export function VoiceDock({
       let heardSpeech = false;
       let recording = true;
 
-      const recorder = new MediaRecorder(stream);
+      let recorder: MediaRecorder;
+      try {
+        recorder = new MediaRecorder(stream, { mimeType: mime });
+      } catch {
+        recorder = new MediaRecorder(stream);
+      }
       mediaRef.current = recorder;
       recorder.ondataavailable = (e) => {
         if (e.data.size) chunksRef.current.push(e.data);
@@ -285,30 +380,38 @@ export function VoiceDock({
         if (!recording || !whisperLoopRef.current) return;
         if (loud) {
           heardSpeech = true;
+          signalBargeIn();
           if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+          // Faster pause → send (~550ms of quiet)
           silenceTimerRef.current = setTimeout(() => {
             if (heardSpeech) finishSegment();
-          }, 1100);
+          }, 550);
         }
       });
 
-      // Max segment length
+      // Max segment length — shorter for snappier turns
       const maxTimer = setTimeout(() => {
         if (heardSpeech) finishSegment();
         else if (whisperLoopRef.current && liveRef.current) {
-          // restart quiet segment
           finishSegment();
         }
-      }, 10000);
+      }, 7000);
 
       recorder.onstop = () => {
         clearTimeout(maxTimer);
         void (async () => {
           if (!whisperLoopRef.current) return;
-          const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-          if (blob.size > 1200 && heardSpeech && !disabledRef.current) {
+          const blob = new Blob(chunksRef.current, { type: mime });
+          if (blob.size > 800 && heardSpeech) {
+            if (disabledRef.current) {
+              // Wait briefly for reply to finish, then resume loop without upload
+              setTimeout(() => {
+                if (whisperLoopRef.current && liveRef.current) runSegment();
+              }, 200);
+              return;
+            }
             setUploading(true);
-            onInterim?.("Transcribing…");
+            onInterimRef.current?.("Transcribing…");
             try {
               const form = new FormData();
               form.append("audio", blob, "alpha.webm");
@@ -324,26 +427,30 @@ export function VoiceDock({
                 /* ignore */
               }
               if (res.ok && json.text) {
-                onInterim?.(String(json.text));
+                onInterimRef.current?.(String(json.text));
                 emitTranscript(String(json.text));
               }
             } finally {
               setUploading(false);
             }
           }
-          // Continue live loop
+          // Continue live loop immediately
           if (whisperLoopRef.current && liveRef.current) {
-            setTimeout(runSegment, disabledRef.current ? 800 : 200);
+            setTimeout(runSegment, 60);
           }
         })();
       };
 
       try {
-        recorder.start();
+        recorder.start(250);
       } catch {
-        setMicError("Could not start live recording");
-        setLiveState(false);
-        stopAllCapture();
+        try {
+          recorder.start();
+        } catch {
+          setMicError("Could not start live recording");
+          setLiveState(false);
+          stopAllCapture();
+        }
       }
     };
 
@@ -354,10 +461,9 @@ export function VoiceDock({
     if (live) {
       setLiveState(false);
       stopAllCapture();
-      onInterim?.("");
+      onInterimRef.current?.("");
       return;
     }
-    if (disabled) return;
     setMicError(null);
 
     // Prefer continuous browser speech (true live, auto-send on pause)
@@ -389,12 +495,12 @@ export function VoiceDock({
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          disabled={(!live && disabled) || uploading}
+          disabled={uploading}
           onClick={() => void toggleLive()}
-          className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2.5 border px-4 py-3 text-sm font-semibold uppercase tracking-[0.14em] transition sm:flex-none sm:min-w-[12.5rem] ${
+          className={`inline-flex min-h-12 flex-1 items-center justify-center gap-2.5 rounded-2xl border px-4 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] transition sm:flex-none sm:min-w-[12.5rem] ${
             live
-              ? "border-emerald-400/60 bg-emerald-400/15 text-emerald-300 shadow-[0_0_22px_rgba(52,211,153,0.35)]"
-              : "border-[var(--color-accent)]/45 bg-[var(--color-accent-dim)] text-[var(--color-accent-2)] hover:border-[var(--color-accent)]"
+              ? "border-emerald-400/45 bg-emerald-400/15 text-emerald-300 shadow-[0_0_32px_rgba(52,211,153,0.28)] backdrop-blur-xl"
+              : "glass-strong border-[var(--color-accent)]/40 text-[var(--color-accent-2)] hover:border-[var(--color-accent)]"
           } disabled:opacity-40`}
           aria-pressed={live}
         >
@@ -405,10 +511,10 @@ export function VoiceDock({
         <button
           type="button"
           onClick={() => onSpeakEnabledChange(!speakEnabled)}
-          className={`inline-flex h-12 items-center gap-2 border px-3 text-xs uppercase tracking-wider ${
+          className={`glass-chip inline-flex h-12 items-center gap-2 rounded-2xl px-3.5 text-xs uppercase tracking-wider ${
             speakEnabled
-              ? "border-[var(--color-border)] text-[var(--color-accent)]"
-              : "border-[var(--color-border)] text-[var(--color-muted)]"
+              ? "text-[var(--color-accent)]"
+              : "text-[var(--color-muted)]"
           }`}
           title={speakEnabled ? "Mute Alpha voice" : "Enable spoken replies"}
         >
@@ -432,7 +538,9 @@ export function VoiceDock({
         <p className="text-[11px] text-emerald-300/90">
           {uploading
             ? "Transcribing…"
-            : "Listening live — speak naturally; Alpha sends when you pause. Tap Live again to stop."}
+            : disabled
+              ? "Listening — will send after Alpha finishes"
+              : "Listening live — speak naturally; Alpha sends when you pause. Tap Live again to stop."}
         </p>
       ) : null}
       {micError ? <p className="text-[11px] text-red-400">{micError}</p> : null}
@@ -454,7 +562,7 @@ export function speakText(
   }
   window.speechSynthesis.cancel();
   const utter = new SpeechSynthesisUtterance(text.slice(0, 1600));
-  utter.rate = 1.02;
+  utter.rate = 1.08;
   utter.pitch = 0.95;
   const voices = window.speechSynthesis.getVoices();
   const wantUrdu = hasUrduScript(text);
@@ -484,4 +592,9 @@ export function speakText(
     opts?.onEnd?.();
   };
   window.speechSynthesis.speak(utter);
+}
+
+export function stopSpeaking() {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
 }
