@@ -231,3 +231,9 @@ h6 {
     transform: rotate(360deg);
   }
 }
+
+@keyframes universe-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -59,6 +59,8 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
+    "/universe",
+    "/universe/:path*",
     "/settings",
     "/settings/:path*",
     "/knowledge",
