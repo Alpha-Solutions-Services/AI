@@ -50,8 +50,13 @@ type SpeechRec = {
 
 function detectLang(): string {
   try {
+    const saved = localStorage.getItem("alpha_listen_lang");
+    if (saved === "ur") return "ur-PK";
+    if (saved === "en") return "en-US";
     const nav = navigator.language || "en-US";
     if (/^ur/i.test(nav)) return "ur-PK";
+    if (/^hi/i.test(nav)) return "hi-IN";
+    if (/^ar/i.test(nav)) return "ar-SA";
     return "en-US";
   } catch {
     return "en-US";
@@ -242,27 +247,21 @@ export function VoiceProvider({
   }, [mode, supported]);
 
   const speak = useCallback((text: string, onEnd?: () => void) => {
-    if (!window.speechSynthesis) {
-      onEnd?.();
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text.slice(0, 1600));
-    u.rate = 1.05;
-    u.onstart = () => setSpeaking(true);
-    u.onend = () => {
-      setSpeaking(false);
-      onEnd?.();
-    };
-    u.onerror = () => {
-      setSpeaking(false);
-      onEnd?.();
-    };
-    setTimeout(() => window.speechSynthesis.speak(u), 40);
+    void import("@/lib/alpha/tts").then(({ speakSmart }) => {
+      void speakSmart(text, {
+        onStart: () => setSpeaking(true),
+        onEnd: () => {
+          setSpeaking(false);
+          onEnd?.();
+        },
+      });
+    });
   }, []);
 
   const stopSpeak = useCallback(() => {
-    window.speechSynthesis?.cancel();
+    void import("@/lib/alpha/tts").then(({ stopSmartSpeak }) => {
+      stopSmartSpeak();
+    });
     setSpeaking(false);
   }, []);
 

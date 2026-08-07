@@ -89,12 +89,14 @@ export function AgentSatellites({
       </div>
 
       {selected ? (
-        <div className="pointer-events-auto absolute left-1/2 top-full z-30 mt-2 w-56 -translate-x-1/2 rounded-2xl border border-white/15 bg-[#0a1220]/95 p-3 text-left shadow-xl backdrop-blur-xl">
+        <div className="pointer-events-auto absolute left-1/2 top-full z-30 mt-2 w-52 -translate-x-1/2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-left shadow-lg">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-slate-100">{selected.name}</p>
+            <p className="text-xs font-semibold text-[var(--color-text)]">
+              {selected.name}
+            </p>
             <button
               type="button"
-              className="text-[10px] text-slate-500"
+              className="text-[10px] text-[var(--color-muted)]"
               onClick={() => setSelected(null)}
             >
               Close

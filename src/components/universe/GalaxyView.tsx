@@ -19,112 +19,120 @@ function PlanetOrb({
   left,
   top,
   beamed,
+  index,
   onSelect,
 }: {
   planet: PlanetConfig;
   left: string;
   top: string;
   beamed?: boolean;
+  index: number;
   onSelect: (p: PlanetConfig) => void;
 }) {
   const [hover, setHover] = useState(false);
   const reduce = useReducedMotion();
-  const dim = planet.enabled ? 1 : 0.4;
+  const dim = planet.enabled ? 1 : 0.38;
 
   return (
-    <button
+    <motion.button
       type="button"
       className="absolute z-[8] -translate-x-1/2 -translate-y-1/2 touch-manipulation text-center outline-none"
       style={{ left, top, opacity: dim }}
+      initial={reduce ? false : { opacity: 0, scale: 0.85 }}
+      animate={
+        reduce
+          ? { opacity: dim, scale: 1 }
+          : {
+              opacity: dim,
+              scale: hover || beamed ? 1.1 : 1,
+              y: [0, index % 2 === 0 ? -4 : 3, 0],
+            }
+      }
+      transition={
+        reduce
+          ? { duration: 0.2 }
+          : {
+              opacity: { duration: 0.35, delay: index * 0.04 },
+              scale: { duration: 0.2 },
+              y: {
+                duration: 4 + (index % 3),
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: index * 0.15,
+              },
+            }
+      }
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onClick={() => onSelect(planet)}
       aria-label={`${planet.name}: ${planet.subtitle}`}
     >
-      <motion.div
-        animate={{
-          scale: reduce ? 1 : hover || beamed ? 1.12 : 1,
+      <div
+        className="relative mx-auto h-11 w-11 rounded-full lg:h-12 lg:w-12"
+        style={{
+          background: `radial-gradient(circle at 32% 28%, #fff 0%, ${planet.theme.primary} 48%, #020617 100%)`,
           boxShadow:
             hover || beamed
-              ? `0 0 28px ${planet.theme.glow}`
-              : `0 0 14px ${planet.theme.glow}`,
-        }}
-        className="relative mx-auto h-11 w-11 rounded-full lg:h-14 lg:w-14"
-        style={{
-          background: `radial-gradient(circle at 32% 28%, #fff 0%, ${planet.theme.primary} 42%, #020617 100%)`,
-          border: beamed
-            ? `2px solid ${planet.theme.primary}`
-            : `1px solid ${planet.theme.primary}66`,
+              ? `0 0 20px ${planet.theme.glow}`
+              : `0 0 10px ${planet.theme.glow}`,
+          outline: beamed ? `2px solid ${planet.theme.primary}` : "none",
+          outlineOffset: 2,
         }}
       />
-      <p className="mt-1 max-w-[6.5rem] truncate text-[10px] font-semibold text-slate-200 lg:text-[11px]">
+      <p className="mt-1.5 max-w-[6.5rem] truncate text-[10px] font-medium text-[var(--color-chrome)] lg:text-[11px]">
         {planet.name}
       </p>
-    </button>
+    </motion.button>
   );
 }
 
-/** Mobile / tablet: readable connected module list (no crushed orbit). */
-function MobileGalaxy({
-  onOpen,
-}: {
-  onOpen: (p: PlanetConfig) => void;
-}) {
+function MobileGalaxy({ onOpen }: { onOpen: (p: PlanetConfig) => void }) {
   const enabled = getEnabledPlanets();
   const soon = PLANETS.filter((p) => !p.enabled).slice(0, 4);
 
   return (
     <div className="space-y-3 px-3 pb-2 pt-2 lg:hidden">
-      <div className="flex items-center justify-center gap-3 rounded-2xl border border-amber-300/20 bg-amber-500/5 px-3 py-4">
+      <div className="flex items-center justify-center gap-3 px-2 py-3">
         <div
-          className="h-14 w-14 shrink-0 rounded-full"
+          className="h-12 w-12 shrink-0 rounded-full"
           style={{
             background:
-              "radial-gradient(circle at 35% 30%, #fff8e7 0%, #fbbf24 40%, #b45309 100%)",
-            boxShadow: "0 0 28px rgba(251,191,36,0.45)",
+              "radial-gradient(circle at 35% 30%, #fff8e7 0%, #fbbf24 45%, #d97706 100%)",
+            boxShadow: "0 0 20px rgba(251,191,36,0.35)",
           }}
         />
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-amber-100">Alpha Star</p>
-          <p className="text-[11px] text-slate-400">
-            Connected to live modules below
+          <p className="text-sm font-semibold">Alpha Star</p>
+          <p className="text-[11px] text-[var(--color-muted)]">
+            Open a live module
           </p>
         </div>
       </div>
 
-      <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300/90">
+      <p className="px-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
         Live modules
       </p>
       <ul className="space-y-2">
-        {enabled.map((p, i) => (
+        {enabled.map((p) => (
           <li key={p.id}>
             <button
               type="button"
               onClick={() => onOpen(p)}
-              className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-left touch-manipulation active:bg-white/[0.07]"
-              style={{ borderColor: `${p.theme.primary}44` }}
+              className="flex w-full items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3 text-left active:bg-[var(--color-surface-2)]"
             >
               <span
-                className="h-10 w-10 shrink-0 rounded-full"
+                className="h-9 w-9 shrink-0 rounded-full"
                 style={{
-                  background: `radial-gradient(circle at 32% 28%, #fff, ${p.theme.primary} 50%, #020617)`,
-                  boxShadow: `0 0 16px ${p.theme.glow}`,
+                  background: `radial-gradient(circle at 32% 28%, #fff, ${p.theme.primary} 55%, #020617)`,
                 }}
               />
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium text-slate-100">
-                  {p.name}
-                </span>
-                <span className="block truncate text-[11px] text-slate-500">
+                <span className="block text-sm font-medium">{p.name}</span>
+                <span className="block truncate text-[11px] text-[var(--color-muted)]">
                   {p.subtitle}
                 </span>
-                {i < enabled.length - 1 ? (
-                  <span className="mt-1 block text-[9px] text-violet-300/80">
-                    ↕ skill link · connected
-                  </span>
-                ) : null}
               </span>
-              <ChevronRight size={16} className="shrink-0 text-slate-500" />
+              <ChevronRight size={16} className="shrink-0 text-[var(--color-muted)]" />
             </button>
           </li>
         ))}
@@ -132,14 +140,14 @@ function MobileGalaxy({
 
       {soon.length ? (
         <>
-          <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
             Coming soon
           </p>
           <div className="flex flex-wrap gap-2">
             {soon.map((p) => (
               <span
                 key={p.id}
-                className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-slate-500"
+                className="rounded-full border border-[var(--color-border)] px-2.5 py-1 text-[10px] text-[var(--color-muted)]"
               >
                 {p.name}
               </span>
@@ -212,19 +220,18 @@ export function GalaxyView() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-hidden">
-      <div className="absolute right-2 top-2 z-20 flex max-w-[55%] items-center gap-2 rounded-2xl border border-white/10 bg-[#0a1220]/90 px-2 py-1.5 backdrop-blur-xl sm:right-4 sm:top-3">
+      <div className="absolute right-2 top-2 z-20 flex max-w-[55%] items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 sm:right-4 sm:top-3">
         <div className="relative shrink-0">
           <ProgressRing percent={health.percent} size={34} />
-          <span className="absolute inset-0 flex items-center justify-center text-[8px] font-semibold text-sky-200">
+          <span className="absolute inset-0 flex items-center justify-center text-[8px] font-semibold text-[var(--color-accent-2)]">
             {health.percent.toFixed(0)}%
           </span>
         </div>
-        <p className="truncate text-[10px] text-slate-300 sm:text-xs">
+        <p className="truncate text-[10px] text-[var(--color-chrome)] sm:text-xs">
           {health.label}
         </p>
       </div>
 
-      {/* Mobile list */}
       <div className="min-h-0 flex-1 overflow-y-auto pt-12 lg:hidden">
         <MobileGalaxy onOpen={openPlanet} />
         <div className="px-3 pb-3">
@@ -232,14 +239,14 @@ export function GalaxyView() {
         </div>
       </div>
 
-      {/* Desktop orbit */}
-      <div className="relative mx-auto hidden min-h-0 w-full max-w-5xl flex-1 flex-col px-4 pt-14 lg:flex">
+      {/* Desktop orbit — open canvas, no bordered “wall” frame */}
+      <div className="relative mx-auto hidden min-h-0 w-full max-w-5xl flex-1 flex-col px-2 pt-12 lg:flex">
         <div
-          className="relative mx-auto w-full flex-1 overflow-hidden rounded-3xl border border-white/5 bg-black/25"
-          style={{ minHeight: 380, maxHeight: "min(54vh, 540px)" }}
+          className="relative mx-auto w-full flex-1 overflow-visible"
+          style={{ minHeight: 400, maxHeight: "min(58vh, 560px)" }}
         >
           <svg
-            className="pointer-events-none absolute inset-0 z-[4] h-full w-full"
+            className="pointer-events-none absolute inset-0 z-[4] h-full w-full overflow-visible"
             aria-hidden
           >
             {layout
@@ -252,8 +259,8 @@ export function GalaxyView() {
                   x2={`${x}%`}
                   y2={`${y}%`}
                   stroke={planet.theme.primary}
-                  strokeOpacity={0.45}
-                  strokeWidth={1.75}
+                  strokeOpacity={0.28}
+                  strokeWidth={1.25}
                 />
               ))}
             {SKILL_CONSTELLATION.map(([a, b]) => {
@@ -262,15 +269,26 @@ export function GalaxyView() {
               if (!A || !B) return null;
               if (!A.enabled && !B.enabled) return null;
               return (
-                <line
+                <motion.line
                   key={`${a}-${b}`}
                   x1={`${A.x}%`}
                   y1={`${A.y}%`}
                   x2={`${B.x}%`}
                   y2={`${B.y}%`}
-                  stroke="rgba(167,139,250,0.55)"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 6"
+                  stroke="rgba(148,163,184,0.45)"
+                  strokeWidth={1.25}
+                  strokeDasharray="5 7"
+                  initial={false}
+                  animate={
+                    reduce
+                      ? undefined
+                      : { strokeDashoffset: [0, -24] }
+                  }
+                  transition={
+                    reduce
+                      ? undefined
+                      : { duration: 6, repeat: Infinity, ease: "linear" }
+                  }
                 />
               );
             })}
@@ -280,8 +298,8 @@ export function GalaxyView() {
                 y1="50%"
                 x2={`${beamTarget.x}%`}
                 y2={`${beamTarget.y}%`}
-                stroke="rgba(251,191,36,0.9)"
-                strokeWidth={2.5}
+                stroke="rgba(251,191,36,0.85)"
+                strokeWidth={2}
                 strokeDasharray="6 4"
               >
                 {!reduce ? (
@@ -297,35 +315,36 @@ export function GalaxyView() {
           </svg>
 
           <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
-            <div className="relative flex h-[160px] w-[160px] items-center justify-center">
-              <AgentSatellites size={150} />
-              <AlphaStar size={56} className="relative z-[1]" />
+            <div className="relative flex h-[140px] w-[140px] items-center justify-center">
+              <AgentSatellites size={140} />
+              <AlphaStar size={52} className="relative z-[1]" />
             </div>
           </div>
 
-          {layout.map(({ planet, x, y }) => (
+          {layout.map(({ planet, x, y }, i) => (
             <PlanetOrb
               key={planet.id}
               planet={planet}
               left={`${x}%`}
               top={`${y}%`}
+              index={i}
               beamed={beamPlanetId === planet.id}
               onSelect={openPlanet}
             />
           ))}
         </div>
 
-        <div className="mt-3 shrink-0">
+        <div className="mt-2 shrink-0 px-2">
           <SkillsPanel />
         </div>
       </div>
 
-      <div className="relative z-20 mt-auto flex shrink-0 flex-col items-center gap-1.5 border-t border-white/5 bg-[#030712]/80 px-2 py-2 backdrop-blur-xl sm:px-3">
+      <div className="relative z-20 mt-auto flex shrink-0 flex-col items-center gap-1.5 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-2 sm:px-3">
         <CommandBar />
         <button
           type="button"
           onClick={() => resetCamera()}
-          className="hidden touch-manipulation items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] uppercase tracking-wider text-slate-400 hover:text-sky-300 lg:inline-flex"
+          className="hidden items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-3 py-1 text-[10px] text-[var(--color-muted)] hover:text-[var(--color-accent-2)] lg:inline-flex"
         >
           <RotateCcw size={12} /> Reset view
         </button>

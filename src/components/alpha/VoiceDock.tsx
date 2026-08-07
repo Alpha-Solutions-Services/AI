@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Volume2, VolumeX } from "lucide-react";
+import { hasArabicScript, sttLocaleForHint } from "@/lib/alpha/tts";
 
 type SpeechRecognitionLike = {
   continuous: boolean;
@@ -36,10 +37,6 @@ declare global {
   }
 }
 
-function hasUrduScript(text: string) {
-  return /[\u0600-\u06FF]/.test(text);
-}
-
 /**
  * Live talk: mic stays on, speech auto-sends when you pause.
  * Tap once to start live mode; tap again to stop. No tap-to-send.
@@ -71,11 +68,13 @@ export function VoiceDock({
   const [uploading, setUploading] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
   const [modeLabel, setModeLabel] = useState<"live" | "whisper" | null>(null);
+  const [listenLang, setListenLang] = useState<"en" | "ur">("en");
 
   const liveRef = useRef(false);
   const disabledRef = useRef(!!disabled);
   const agentSpeakingRef = useRef(agentSpeaking);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const listenLangRef = useRef<"en" | "ur">("en");
   const lastSentRef = useRef("");
   const lastSentAtRef = useRef(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -97,6 +96,36 @@ export function VoiceDock({
   useEffect(() => {
     disabledRef.current = !!disabled;
   }, [disabled]);
+
+  useEffect(() => {
+    listenLangRef.current = listenLang;
+    try {
+      localStorage.setItem("alpha_listen_lang", listenLang);
+    } catch {
+      /* ignore */
+    }
+    // Hot-swap recognition language while live
+    if (recognitionRef.current && liveRef.current) {
+      recognitionRef.current.lang = sttLocaleForHint(listenLang);
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        /* restart via onend */
+      }
+    }
+  }, [listenLang]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("alpha_listen_lang");
+      if (saved === "ur" || saved === "en") {
+        setListenLang(saved);
+        listenLangRef.current = saved;
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     agentSpeakingRef.current = agentSpeaking;
@@ -257,7 +286,7 @@ export function VoiceDock({
     const recognition = new Ctor();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = "en-US";
+    recognition.lang = sttLocaleForHint(listenLangRef.current);
     recognition.maxAlternatives = 1;
 
     recognition.onspeechstart = () => {
@@ -275,6 +304,18 @@ export function VoiceDock({
       }
 
       if (interim || finalPiece) signalBargeIn();
+
+      const sample = (finalPiece || interim).trim();
+      // Auto-switch mic locale when Arabic script appears while on English
+      if (
+        sample &&
+        hasArabicScript(sample) &&
+        listenLangRef.current === "en"
+      ) {
+        listenLangRef.current = "ur";
+        setListenLang("ur");
+        recognition.lang = sttLocaleForHint("ur");
+      }
 
       if (interim) {
         interimBufRef.current = interim.trim();
@@ -546,14 +587,16 @@ export function VoiceDock({
           <span>{speakEnabled ? "TTS on" : "TTS off"}</span>
         </button>
 
-        <span className="col-span-2 text-center text-[10px] uppercase tracking-[0.18em] text-[var(--color-muted)] sm:col-span-1 sm:text-left">
-          EN · اردو
-          {modeLabel === "live"
-            ? " · auto-send"
-            : modeLabel === "whisper"
-              ? " · pause to send"
-              : ""}
-        </span>
+        <button
+          type="button"
+          onClick={() =>
+            setListenLang((l) => (l === "en" ? "ur" : "en"))
+          }
+          className="col-span-2 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--color-border)] px-3 text-xs text-[var(--color-chrome)] sm:col-span-1 sm:h-12"
+          title="Microphone language"
+        >
+          {listenLang === "ur" ? "اردو · mic" : "EN · mic"}
+        </button>
       </div>
 
       {live ? (
@@ -562,7 +605,7 @@ export function VoiceDock({
             ? "Transcribing…"
             : disabled
               ? "Listening — will send after Alpha finishes"
-              : "Listening — speak, pause to send. Tap Live again to stop."}
+              : `Listening (${listenLang === "ur" ? "Urdu" : "English"}) — speak, pause to send.`}
         </p>
       ) : null}
       {micError ? <p className="text-[11px] text-red-400">{micError}</p> : null}
@@ -576,71 +619,16 @@ export function speakText(
     onStart?: () => void;
     onEnd?: () => void;
     onBoundary?: (progress: number) => void;
+    hint?: import("@/lib/alpha/tts").SpeechLangHint;
   }
 ) {
-  if (typeof window === "undefined" || !window.speechSynthesis) {
-    opts?.onEnd?.();
-    return;
-  }
-
-  const speakNow = () => {
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text.slice(0, 1600));
-    utter.rate = 1.05;
-    utter.pitch = 0.95;
-    const voices = window.speechSynthesis.getVoices();
-    const wantUrdu = hasUrduScript(text);
-    const preferred = wantUrdu
-      ? voices.find((v) => /ur|pak|hindi|india/i.test(`${v.lang} ${v.name}`)) ||
-        voices.find((v) => v.lang.startsWith("ur"))
-      : voices.find((v) => /en-GB|Daniel|Google UK|Samantha|Jenny/i.test(v.name)) ||
-        voices.find((v) => v.lang.startsWith("en"));
-    if (preferred) utter.voice = preferred;
-    if (wantUrdu) utter.lang = preferred?.lang || "ur-PK";
-    else utter.lang = preferred?.lang || "en-US";
-
-    const len = Math.max(1, text.length);
-    utter.onboundary = (ev) => {
-      const charIndex = typeof ev.charIndex === "number" ? ev.charIndex : 0;
-      opts?.onBoundary?.(Math.min(1, charIndex / len));
-    };
-    utter.onstart = () => {
-      opts?.onStart?.();
-      opts?.onBoundary?.(0.15);
-    };
-    utter.onend = () => {
-      opts?.onBoundary?.(0);
-      opts?.onEnd?.();
-    };
-    utter.onerror = () => {
-      opts?.onBoundary?.(0);
-      opts?.onEnd?.();
-    };
-    // Small delay after cancel so Chrome actually speaks
-    setTimeout(() => {
-      try {
-        window.speechSynthesis.speak(utter);
-      } catch {
-        opts?.onEnd?.();
-      }
-    }, 60);
-  };
-
-  const voices = window.speechSynthesis.getVoices();
-  if (!voices.length) {
-    const onVoices = () => {
-      window.speechSynthesis.removeEventListener("voiceschanged", onVoices);
-      speakNow();
-    };
-    window.speechSynthesis.addEventListener("voiceschanged", onVoices);
-    // Fallback if voiceschanged never fires
-    setTimeout(speakNow, 250);
-  } else {
-    speakNow();
-  }
+  void import("@/lib/alpha/tts").then(({ speakSmart }) => {
+    void speakSmart(text, opts);
+  });
 }
 
 export function stopSpeaking() {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
+  void import("@/lib/alpha/tts").then(({ stopSmartSpeak }) => {
+    stopSmartSpeak();
+  });
 }
