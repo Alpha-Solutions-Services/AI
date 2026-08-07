@@ -32,11 +32,12 @@ function PlanetOrb({
   const [hover, setHover] = useState(false);
   const reduce = useReducedMotion();
   const dim = planet.enabled ? 1 : 0.38;
+  const lit = hover || beamed;
 
   return (
     <motion.button
       type="button"
-      className="absolute z-[8] -translate-x-1/2 -translate-y-1/2 touch-manipulation text-center outline-none"
+      className="absolute z-[8] -translate-x-1/2 -translate-y-1/2 touch-manipulation text-center outline-none [perspective:600px]"
       style={{ left, top, opacity: dim }}
       initial={reduce ? false : { opacity: 0, scale: 0.85 }}
       animate={
@@ -44,8 +45,8 @@ function PlanetOrb({
           ? { opacity: dim, scale: 1 }
           : {
               opacity: dim,
-              scale: hover || beamed ? 1.1 : 1,
-              y: [0, index % 2 === 0 ? -4 : 3, 0],
+              scale: lit ? 1.12 : 1,
+              y: [0, index % 2 === 0 ? -5 : 4, 0],
             }
       }
       transition={
@@ -53,12 +54,12 @@ function PlanetOrb({
           ? { duration: 0.2 }
           : {
               opacity: { duration: 0.35, delay: index * 0.04 },
-              scale: { duration: 0.2 },
+              scale: { duration: 0.22 },
               y: {
-                duration: 4 + (index % 3),
+                duration: 4.2 + (index % 3) * 0.4,
                 repeat: Infinity,
                 ease: "easeInOut",
-                delay: index * 0.15,
+                delay: index * 0.12,
               },
             }
       }
@@ -67,19 +68,61 @@ function PlanetOrb({
       onClick={() => onSelect(planet)}
       aria-label={`${planet.name}: ${planet.subtitle}`}
     >
-      <div
-        className="relative mx-auto h-11 w-11 rounded-full lg:h-12 lg:w-12"
-        style={{
-          background: `radial-gradient(circle at 32% 28%, #fff 0%, ${planet.theme.primary} 48%, #020617 100%)`,
-          boxShadow:
-            hover || beamed
-              ? `0 0 20px ${planet.theme.glow}`
-              : `0 0 10px ${planet.theme.glow}`,
-          outline: beamed ? `2px solid ${planet.theme.primary}` : "none",
-          outlineOffset: 2,
-        }}
+      {/* Ground shadow for 3D depth */}
+      <span
+        aria-hidden
+        className="absolute left-1/2 top-[2.65rem] h-2 w-8 -translate-x-1/2 rounded-[100%] bg-black/50 blur-[3px] lg:top-[3.1rem] lg:w-9"
       />
-      <p className="mt-1.5 max-w-[6.5rem] truncate text-[10px] font-medium text-[var(--color-chrome)] lg:text-[11px]">
+      <div
+        className="relative mx-auto h-12 w-12 lg:h-[3.25rem] lg:w-[3.25rem]"
+        style={{
+          transform: lit ? "rotateX(8deg) rotateY(-6deg)" : "rotateX(6deg)",
+          transformStyle: "preserve-3d",
+        }}
+      >
+        {/* Soft atmosphere */}
+        <span
+          aria-hidden
+          className="absolute -inset-1 rounded-full opacity-70"
+          style={{
+            background: `radial-gradient(circle, ${planet.theme.glow} 0%, transparent 70%)`,
+            filter: "blur(2px)",
+          }}
+        />
+        {/* Sphere body */}
+        <span
+          className="absolute inset-0 overflow-hidden rounded-full"
+          style={{
+            background: `
+              radial-gradient(circle at 30% 26%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.35) 14%, transparent 36%),
+              radial-gradient(circle at 48% 48%, ${planet.theme.primary} 0%, ${planet.theme.primary} 42%, #0a1220 78%, #020617 100%)
+            `,
+            boxShadow: lit
+              ? `inset -6px -8px 14px rgba(0,0,0,0.55), inset 4px 4px 10px rgba(255,255,255,0.25), 0 0 26px ${planet.theme.glow}`
+              : `inset -5px -7px 12px rgba(0,0,0,0.5), inset 3px 3px 8px rgba(255,255,255,0.18), 0 0 14px ${planet.theme.glow}`,
+          }}
+        />
+        {/* Specular glint */}
+        <span
+          aria-hidden
+          className="absolute left-[18%] top-[16%] h-[28%] w-[22%] rounded-full bg-white/50 blur-[1px]"
+        />
+        {/* Terminator rim */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-full"
+          style={{
+            boxShadow: `inset -10px -2px 12px rgba(0,0,0,0.35), 0 0 0 1px ${planet.theme.primary}33`,
+          }}
+        />
+        {beamed ? (
+          <span
+            aria-hidden
+            className="absolute -inset-1.5 rounded-full border border-amber-300/70"
+          />
+        ) : null}
+      </div>
+      <p className="relative z-[1] mt-2 max-w-[6.5rem] truncate text-[10px] font-medium text-[var(--color-chrome)] drop-shadow lg:text-[11px]">
         {planet.name}
       </p>
     </motion.button>
@@ -121,11 +164,19 @@ function MobileGalaxy({ onOpen }: { onOpen: (p: PlanetConfig) => void }) {
               className="flex w-full items-center gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3 text-left active:bg-[var(--color-surface-2)]"
             >
               <span
-                className="h-9 w-9 shrink-0 rounded-full"
-                style={{
-                  background: `radial-gradient(circle at 32% 28%, #fff, ${p.theme.primary} 55%, #020617)`,
-                }}
-              />
+                className="relative h-10 w-10 shrink-0"
+              >
+                <span
+                  className="absolute inset-0 overflow-hidden rounded-full"
+                  style={{
+                    background: `
+                      radial-gradient(circle at 30% 26%, rgba(255,255,255,0.9) 0%, transparent 34%),
+                      radial-gradient(circle at 48% 48%, ${p.theme.primary} 0%, #0a1220 78%, #020617 100%)
+                    `,
+                    boxShadow: `inset -4px -5px 10px rgba(0,0,0,0.45), 0 0 12px ${p.theme.glow}`,
+                  }}
+                />
+              </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium">{p.name}</span>
                 <span className="block truncate text-[11px] text-[var(--color-muted)]">
@@ -247,70 +298,185 @@ export function GalaxyView() {
         >
           <svg
             className="pointer-events-none absolute inset-0 z-[4] h-full w-full overflow-visible"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
             aria-hidden
           >
+            <defs>
+              <filter
+                id="link-glow"
+                x="-50%"
+                y="-50%"
+                width="200%"
+                height="200%"
+              >
+                <feGaussianBlur stdDeviation="0.35" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <filter
+                id="link-glow-strong"
+                x="-60%"
+                y="-60%"
+                width="220%"
+                height="220%"
+              >
+                <feGaussianBlur stdDeviation="0.55" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
+            {/* Soft depth under-spokes */}
             {layout
               .filter((l) => l.planet.enabled)
               .map(({ planet, x, y }) => (
                 <line
-                  key={`spoke-${planet.id}`}
-                  x1="50%"
-                  y1="50%"
-                  x2={`${x}%`}
-                  y2={`${y}%`}
-                  stroke={planet.theme.primary}
-                  strokeOpacity={0.28}
-                  strokeWidth={1.25}
+                  key={`spoke-shadow-${planet.id}`}
+                  x1={50}
+                  y1={50}
+                  x2={x}
+                  y2={y}
+                  stroke="rgba(0,0,0,0.5)"
+                  strokeWidth={0.9}
+                  strokeLinecap="round"
+                  opacity={0.4}
                 />
               ))}
-            {SKILL_CONSTELLATION.map(([a, b]) => {
+
+            {/* Star → planet energy spokes */}
+            {layout
+              .filter((l) => l.planet.enabled)
+              .map(({ planet, x, y }) => (
+                <g key={`spoke-${planet.id}`} filter="url(#link-glow)">
+                  <line
+                    x1={50}
+                    y1={50}
+                    x2={x}
+                    y2={y}
+                    stroke={planet.theme.primary}
+                    strokeOpacity={0.2}
+                    strokeWidth={0.85}
+                    strokeLinecap="round"
+                  />
+                  <line
+                    x1={50}
+                    y1={50}
+                    x2={x}
+                    y2={y}
+                    stroke={planet.theme.primary}
+                    strokeOpacity={0.75}
+                    strokeWidth={0.32}
+                    strokeLinecap="round"
+                  />
+                  {!reduce ? (
+                    <circle r={0.45} fill={planet.theme.primary} opacity={0.95}>
+                      <animate
+                        attributeName="cx"
+                        values={`50;${x}`}
+                        dur={`${3.2 + (Math.abs(planet.orbit.angleDeg) % 50) / 25}s`}
+                        repeatCount="indefinite"
+                      />
+                      <animate
+                        attributeName="cy"
+                        values={`50;${y}`}
+                        dur={`${3.2 + (Math.abs(planet.orbit.angleDeg) % 50) / 25}s`}
+                        repeatCount="indefinite"
+                      />
+                    </circle>
+                  ) : null}
+                </g>
+              ))}
+
+            {/* Skill constellation — soft curved tubes */}
+            {SKILL_CONSTELLATION.map(([a, b], i) => {
               const A = byId.get(a);
               const B = byId.get(b);
               if (!A || !B) return null;
               if (!A.enabled && !B.enabled) return null;
+              const midX = (A.x + B.x) / 2;
+              const midY = (A.y + B.y) / 2 - 3;
+              const d = `M ${A.x} ${A.y} Q ${midX} ${midY} ${B.x} ${B.y}`;
               return (
-                <motion.line
-                  key={`${a}-${b}`}
-                  x1={`${A.x}%`}
-                  y1={`${A.y}%`}
-                  x2={`${B.x}%`}
-                  y2={`${B.y}%`}
-                  stroke="rgba(148,163,184,0.45)"
-                  strokeWidth={1.25}
-                  strokeDasharray="5 7"
-                  initial={false}
-                  animate={
-                    reduce
-                      ? undefined
-                      : { strokeDashoffset: [0, -24] }
-                  }
-                  transition={
-                    reduce
-                      ? undefined
-                      : { duration: 6, repeat: Infinity, ease: "linear" }
-                  }
-                />
+                <g key={`${a}-${b}`} filter="url(#link-glow)">
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke="rgba(148,163,184,0.16)"
+                    strokeWidth={0.9}
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke="rgba(203,213,225,0.65)"
+                    strokeWidth={0.28}
+                    strokeLinecap="round"
+                    strokeDasharray={reduce ? undefined : "0.6 2.2"}
+                  >
+                    {!reduce ? (
+                      <animate
+                        attributeName="stroke-dashoffset"
+                        values="0;-8"
+                        dur={`${5 + (i % 3)}s`}
+                        repeatCount="indefinite"
+                      />
+                    ) : null}
+                  </path>
+                  {!reduce ? (
+                    <circle r={0.38} fill="rgba(241,245,249,0.95)">
+                      <animate
+                        attributeName="cx"
+                        values={`${A.x};${midX};${B.x}`}
+                        dur={`${4 + (i % 4) * 0.45}s`}
+                        repeatCount="indefinite"
+                      />
+                      <animate
+                        attributeName="cy"
+                        values={`${A.y};${midY};${B.y}`}
+                        dur={`${4 + (i % 4) * 0.45}s`}
+                        repeatCount="indefinite"
+                      />
+                    </circle>
+                  ) : null}
+                </g>
               );
             })}
+
             {beamTarget ? (
-              <line
-                x1="50%"
-                y1="50%"
-                x2={`${beamTarget.x}%`}
-                y2={`${beamTarget.y}%`}
-                stroke="rgba(251,191,36,0.85)"
-                strokeWidth={2}
-                strokeDasharray="6 4"
-              >
-                {!reduce ? (
-                  <animate
-                    attributeName="stroke-opacity"
-                    values="0.35;1;0.35"
-                    dur="1s"
-                    repeatCount="indefinite"
-                  />
-                ) : null}
-              </line>
+              <g filter="url(#link-glow-strong)">
+                <line
+                  x1={50}
+                  y1={50}
+                  x2={beamTarget.x}
+                  y2={beamTarget.y}
+                  stroke="rgba(251,191,36,0.3)"
+                  strokeWidth={1.1}
+                  strokeLinecap="round"
+                />
+                <line
+                  x1={50}
+                  y1={50}
+                  x2={beamTarget.x}
+                  y2={beamTarget.y}
+                  stroke="rgba(251,191,36,0.95)"
+                  strokeWidth={0.45}
+                  strokeLinecap="round"
+                >
+                  {!reduce ? (
+                    <animate
+                      attributeName="stroke-opacity"
+                      values="0.45;1;0.45"
+                      dur="0.9s"
+                      repeatCount="indefinite"
+                    />
+                  ) : null}
+                </line>
+              </g>
             ) : null}
           </svg>
 
