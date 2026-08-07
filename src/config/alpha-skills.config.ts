@@ -126,6 +126,34 @@ Present pending confirms clearly. Cancel cleanly if staff declines.`,
     playbook: `Reply in the user's language. Hearing checks: acknowledge warmly without tools.
 Keep spoken answers concise; avoid dumping huge tables into TTS.`,
   },
+  {
+    id: "support-handoff",
+    name: "Support Handoff",
+    description:
+      "AFN public Support Agent sessions — inbox at /support, join as human, lead capture.",
+    planetIds: ["portal", "intelligence"],
+    tools: ["browser_open_alpha_app"],
+    status: "active",
+    playbook: `When staff ask about AFN website chats, leads, or “join the customer chat”:
+1. Direct them to /support (Support inbox) — Join / Release / Close.
+2. Public widget is on afn.alphasolutions.software; staff never use Jarvis tools from the public widget.
+3. Leads are structured (name/email/phone/role) in support_leads.
+4. Do not invent session contents — open the inbox UI.`,
+  },
+  {
+    id: "work-discipline",
+    name: "Work Discipline",
+    description:
+      "Surgical changes, simplicity, verify-before-claim — Karpathy + Alpha gstack-safe planning.",
+    planetIds: ["intelligence", "settings"],
+    tools: [],
+    status: "active",
+    playbook: `For planning/review advice to staff:
+1. Think before acting — surface assumptions; don't invent data.
+2. Prefer minimum steps; confirm writes.
+3. Plan → build → review → staging QA; never deploy or migrate without explicit staff go.
+4. gstack-style office-hours/review is methodology only — not a live Alpha API.`,
+  },
 ];
 
 /** Metadata only (~Claude progressive disclosure layer 1) */
@@ -159,6 +187,10 @@ export function matchSkills(
       score += 5;
     if (/web|fmcsa|eld|search online/.test(t) && s.id === "knowledge-web") score += 4;
     if (/اردو|urdu|hear|سن/.test(t) && s.id === "bilingual-voice") score += 4;
+    if (/support|afn chat|inbox|handoff|join.*chat|visitor/.test(t) && s.id === "support-handoff")
+      score += 5;
+    if (/plan|review|deploy|gstack|simplicity|surgical/.test(t) && s.id === "work-discipline")
+      score += 3;
     return { s, score };
   });
   return scored

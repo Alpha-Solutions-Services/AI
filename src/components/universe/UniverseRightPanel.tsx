@@ -63,23 +63,23 @@ export function UniverseRightPanel() {
   const overview = data?.overview ?? [];
 
   return (
-    <aside className="flex h-full w-full max-w-[320px] flex-col gap-3 overflow-y-auto border-l border-sky-500/15 bg-[#060b14]/95 p-3 backdrop-blur-xl">
+    <aside className="flex h-full w-full max-w-[320px] flex-col gap-3 overflow-y-auto border-l border-[var(--color-border)] bg-[var(--color-surface)] p-3">
       <section
         id="activity"
-        className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/8 bg-white/[0.03] p-3"
+        className="flex min-h-0 flex-1 flex-col rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] p-3"
       >
         <div className="mb-3">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-300">
-            Recent tool activity
+          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+            Recent activity
           </h2>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">
             From your Alpha tool runs
           </p>
         </div>
         {loading ? (
-          <p className="text-[12px] text-slate-500">Loading…</p>
+          <p className="text-[12px] text-[var(--color-muted)]">Loading…</p>
         ) : activity.length === 0 ? (
-          <p className="rounded-xl border border-white/5 bg-black/20 px-3 py-4 text-[12px] text-slate-500">
+          <p className="rounded-lg border border-[var(--color-border)] px-3 py-4 text-[12px] text-[var(--color-muted)]">
             No tool activity yet. Ask Alpha to search loads or Portal tickets.
           </p>
         ) : (

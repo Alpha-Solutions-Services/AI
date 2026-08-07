@@ -19,7 +19,7 @@ export default async function HomePage() {
   }
 
   return (
-    <AppShell email={user.email} centerOnly={false}>
+    <AppShell email={user.email} centerOnly>
       <DashboardHome />
     </AppShell>
   );

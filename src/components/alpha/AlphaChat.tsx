@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Send } from "lucide-react";
 import { ConfirmCard, type PendingConfirm } from "@/components/alpha/ConfirmCard";
-import { SpeakingOrb } from "@/components/alpha/SpeakingOrb";
+import { LiveStatus } from "@/components/alpha/LiveStatus";
 import {
   VoiceDock,
   speakText,
@@ -24,6 +24,8 @@ const SUGGESTIONS = [
   "Portal admin کھولو",
   "Search the web for FMCSA ELD updates",
   "Learn Dispatch sessions خلاصہ کرو",
+  "Open AFN support inbox",
+  "Business snapshot",
 ];
 
 async function runClientActions(actions: ClientAction[]) {
@@ -52,7 +54,6 @@ export function AlphaChat() {
   const [speaking, setSpeaking] = useState(false);
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
-  const [level, setLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingConfirm[]>([]);
   const [speakEnabled, setSpeakEnabled] = useState(true);
@@ -87,7 +88,6 @@ export function AlphaChat() {
     stopSpeaking();
     speakingRef.current = false;
     setSpeaking(false);
-    setLevel(0);
   }
 
   const mode = speaking
@@ -101,19 +101,16 @@ export function AlphaChat() {
   async function send(message: string) {
     const trimmed = cleanVoiceTranscript(message);
     if (!trimmed || busyRef.current) return;
-    // Interrupt any in-progress reply voice
     handleBargeIn();
     busyRef.current = true;
     setBusy(true);
     setError(null);
     setText("");
     setInterim("");
-    const userMsg: Msg = {
-      id: `u-${Date.now()}`,
-      role: "user",
-      content: trimmed,
-    };
-    setMessages((m) => [...m, userMsg]);
+    setMessages((m) => [
+      ...m,
+      { id: `u-${Date.now()}`, role: "user", content: trimmed },
+    ]);
 
     try {
       const res = await fetch("/api/chat", {
@@ -156,7 +153,6 @@ export function AlphaChat() {
         await runClientActions(json.clientActions);
       }
       if (speakEnabled && reply) {
-        // Mark speaking immediately so live mic pauses before TTS starts
         speakingRef.current = true;
         setSpeaking(true);
         speakText(reply, {
@@ -167,9 +163,7 @@ export function AlphaChat() {
           onEnd: () => {
             speakingRef.current = false;
             setSpeaking(false);
-            setLevel(0);
           },
-          onBoundary: (p) => setLevel(0.25 + p * 0.75),
         });
       }
     } catch (err) {
@@ -180,65 +174,62 @@ export function AlphaChat() {
     }
   }
 
-  const showHeroOrb = messages.length === 0 || listening || speaking || busy;
-
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col px-3 pt-3 sm:px-4 sm:pt-4">
-        <div
-          className={`mb-2 flex flex-col items-center justify-center ${
-            showHeroOrb ? "" : "scale-90"
-          }`}
-        >
-          <div
-            className={
-              showHeroOrb
-                ? "w-full max-w-[220px] sm:max-w-[300px] md:max-w-[360px]"
-                : "w-[120px] sm:w-[160px]"
-            }
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3 sm:px-5">
+        <div className="min-w-0">
+          <h1
+            className="truncate text-base font-semibold tracking-tight sm:text-lg"
+            style={{ fontFamily: "var(--font-display), sans-serif" }}
           >
-            <SpeakingOrb mode={mode} level={level} />
-          </div>
-          <p className="mt-1.5 text-center text-[9px] font-semibold uppercase tracking-[0.32em] text-[var(--color-accent-2)]/85">
-            {mode === "listening"
-              ? "Listening · سن رہا ہے"
-              : mode === "speaking"
-                ? "Speaking · بول رہا ہے"
-                : mode === "thinking"
-                  ? "Processing"
-                  : "Alpha core · ready"}
+            Chat
+          </h1>
+          <p className="truncate text-xs text-[var(--color-muted)]">
+            Portal · TMS · Learn · Support
           </p>
-          {(listening || interim) && (
-            <p
-              className="glass-strong mt-2.5 max-w-lg rounded-2xl px-4 py-3 text-center text-sm text-[var(--color-accent-2)]"
-              dir="auto"
-            >
-              {interim || "…"}
-            </p>
-          )}
         </div>
+        <LiveStatus mode={mode} />
+      </div>
 
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-2">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6">
           {messages.length === 0 && !listening ? (
-            <div className="mx-auto grid max-w-2xl grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => void send(s)}
-                  dir="auto"
-                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3.5 py-3 text-left text-[13px] text-[var(--color-chrome)] transition hover:border-[var(--color-accent)]"
-                >
-                  {s}
-                </button>
-              ))}
+            <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 pt-4 sm:pt-8">
+              <div>
+                <p className="text-sm text-[var(--color-muted)]">
+                  Alpha is live. Ask about tickets, loads, academy, or open
+                  Support to join AFN chats.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => void send(s)}
+                    dir="auto"
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-3 text-left text-sm text-[var(--color-chrome)] transition hover:border-[var(--color-accent)] hover:bg-[var(--color-surface-2)]"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : null}
+
+          {(listening || interim) && (
+            <p
+              className="mx-auto max-w-2xl rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-accent-2)]"
+              dir="auto"
+            >
+              {interim || "Listening…"}
+            </p>
+          )}
 
           {messages.map((m) => (
             <motion.div
               key={m.id}
-              initial={{ opacity: 0, y: 6 }}
+              initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               dir="auto"
               className={`mx-auto max-w-2xl whitespace-pre-wrap rounded-lg px-4 py-3 text-[14px] leading-relaxed ${
@@ -279,18 +270,22 @@ export function AlphaChat() {
           ))}
 
           {busy ? (
-            <div className="inline-flex items-center gap-2 px-1 text-sm text-[var(--color-muted)]">
-              <Loader2 className="animate-spin" size={16} /> Processing…
+            <div className="mx-auto flex max-w-2xl items-center gap-2 text-sm text-[var(--color-muted)]">
+              <Loader2 className="animate-spin" size={16} /> Working…
             </div>
           ) : null}
           <div ref={bottomRef} />
         </div>
 
-        {error ? <p className="mb-2 text-sm text-red-400">{error}</p> : null}
+        {error ? (
+          <p className="shrink-0 px-4 pb-2 text-sm text-red-400 sm:px-6">
+            {error}
+          </p>
+        ) : null}
       </div>
 
       <form
-        className="mt-auto shrink-0 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-2.5 sm:px-3 sm:py-3"
+        className="mt-auto shrink-0 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3 sm:px-5"
         onSubmit={(e) => {
           e.preventDefault();
           void send(text);
@@ -304,7 +299,6 @@ export function AlphaChat() {
             onSpeakEnabledChange={persistSpeak}
             onListeningChange={setListening}
             onInterim={setInterim}
-            onLevel={setLevel}
             onBargeIn={handleBargeIn}
             onTranscript={(t) => {
               if (busyRef.current || speakingRef.current) return;
@@ -315,14 +309,14 @@ export function AlphaChat() {
               void send(cleaned);
             }}
           />
-          <div className="flex items-end gap-2.5">
+          <div className="flex items-end gap-2">
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={2}
               dir="auto"
-              placeholder="Ask Alpha…"
-              className="max-h-28 min-h-[48px] flex-1 resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)]"
+              placeholder="Message Alpha…"
+              className="max-h-28 min-h-[48px] flex-1 resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3.5 py-3 text-sm outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)]"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -333,7 +327,7 @@ export function AlphaChat() {
             <button
               type="submit"
               disabled={busy || !text.trim()}
-              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent)] text-white transition disabled:opacity-40"
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent)] text-white transition hover:brightness-110 disabled:opacity-40"
               aria-label="Send"
             >
               <Send size={16} />

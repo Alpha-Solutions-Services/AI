@@ -20,8 +20,8 @@ import { CommandBar } from "@/components/universe/CommandBar";
 import { useUniverseOverview } from "@/components/universe/UniverseRightPanel";
 
 /**
- * Mobile-first shell: sidebar/right panel only from lg/xl.
- * Below that, hamburger drawers only — never crush the galaxy.
+ * Universe shell — same professional tokens as staff console.
+ * Sidebar from lg; drawers + bottom nav on smaller screens.
  */
 export function UniverseShell({
   children,
@@ -38,7 +38,6 @@ export function UniverseShell({
     setDrawer("none");
   }, [pathname]);
 
-  // Lock body scroll while drawer open
   useEffect(() => {
     if (drawer === "none") return;
     const prev = document.body.style.overflow;
@@ -48,38 +47,31 @@ export function UniverseShell({
     };
   }, [drawer]);
 
-  const { data: overviewLive } = useUniverseOverview();
-  const badges = overviewLive?.badges ?? { notifications: 0, messages: 0, tasks: 0 };
+  useUniverseOverview();
 
   return (
-    <div className="relative flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[#030712] text-slate-100">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-80"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 50% at 50% 20%, rgba(56,189,248,0.1), transparent 55%), linear-gradient(180deg,#030712,#061018 50%,#030712)",
-        }}
-      />
-
-      {/* Top bar — always on small/medium; desktop keeps title in column */}
-      <header className="relative z-30 flex shrink-0 items-center justify-between gap-2 border-b border-sky-500/15 bg-[#060b14]/95 px-3 py-2.5 backdrop-blur-xl lg:hidden">
+    <div className="relative flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
+      <header className="relative z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 lg:hidden">
         <button
           type="button"
-          className="rounded-lg border border-white/10 p-2.5 text-sky-300 touch-manipulation"
+          className="rounded-lg border border-[var(--color-border)] p-2.5 text-[var(--color-accent-2)]"
           onClick={() => setDrawer((d) => (d === "nav" ? "none" : "nav"))}
           aria-label="Open navigation"
         >
           <Menu size={18} />
         </button>
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-xs font-semibold tracking-[0.16em] text-sky-200">
-            ALPHA UNIVERSE
+          <p className="truncate text-sm font-semibold tracking-tight">
+            Alpha Universe
+          </p>
+          <p className="flex items-center justify-center gap-1.5 text-[10px] text-[var(--color-muted)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            Live modules
           </p>
         </div>
         <button
           type="button"
-          className="rounded-lg border border-white/10 p-2.5 text-slate-400 touch-manipulation"
+          className="rounded-lg border border-[var(--color-border)] p-2.5 text-[var(--color-muted)]"
           onClick={() => setDrawer((d) => (d === "right" ? "none" : "right"))}
           aria-label="Open activity"
         >
@@ -88,27 +80,32 @@ export function UniverseShell({
       </header>
 
       <div className="relative z-10 flex min-h-0 min-w-0 flex-1 overflow-hidden">
-        {/* Desktop sidebar only ≥1024px */}
         <div className="hidden shrink-0 lg:flex">
           <UniverseSidebar email={email} />
         </div>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="relative hidden shrink-0 items-center justify-between border-b border-sky-500/10 px-4 py-3 lg:flex">
-            <div className="w-24" />
+          <div className="relative hidden h-14 shrink-0 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 lg:flex">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-40" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+              </span>
+              <span className="text-xs text-[var(--color-muted)]">Live</span>
+            </div>
             <div className="min-w-0 text-center">
-              <h1 className="text-sm font-bold uppercase tracking-[0.28em] text-sky-100">
+              <h1 className="text-sm font-semibold tracking-tight">
                 Alpha Universe
               </h1>
-              <p className="mt-0.5 text-[10px] text-slate-500">
-                Connected skills · live data
+              <p className="text-[11px] text-[var(--color-muted)]">
+                Skills · modules · live data
               </p>
             </div>
             <div className="flex items-center gap-3">
               <LiveClock />
               <Link
                 href="/universe/settings"
-                className="rounded-lg border border-white/10 p-2 text-slate-400 hover:text-sky-300"
+                className="rounded-lg border border-[var(--color-border)] p-2 text-[var(--color-muted)] hover:text-[var(--color-accent-2)]"
                 aria-label="Settings"
               >
                 <Settings size={16} />
@@ -126,7 +123,7 @@ export function UniverseShell({
               {children}
             </div>
             {!isGalaxyHome ? (
-              <div className="shrink-0 border-t border-white/5 bg-[#030712]/90 px-3 py-2 backdrop-blur-xl">
+              <div className="shrink-0 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
                 <CommandBar />
               </div>
             ) : null}
@@ -138,13 +135,12 @@ export function UniverseShell({
         </div>
       </div>
 
-      {/* Nav drawer — phones + tablets */}
       {drawer === "nav" ? (
         <div className="fixed inset-0 z-[60] flex lg:hidden">
           <div className="relative h-full w-[min(100%,280px)] shadow-2xl">
             <button
               type="button"
-              className="absolute right-2 top-2 z-10 rounded-lg border border-white/10 bg-black/40 p-2 text-slate-300"
+              className="absolute right-2 top-2 z-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2 text-[var(--color-muted)]"
               aria-label="Close menu"
               onClick={() => setDrawer("none")}
             >
@@ -157,7 +153,7 @@ export function UniverseShell({
           </div>
           <button
             type="button"
-            className="flex-1 bg-black/65"
+            className="flex-1 bg-black/60"
             aria-label="Close"
             onClick={() => setDrawer("none")}
           />
@@ -168,7 +164,7 @@ export function UniverseShell({
         <div className="fixed inset-0 z-[60] flex justify-end xl:hidden">
           <button
             type="button"
-            className="flex-1 bg-black/65"
+            className="flex-1 bg-black/60"
             aria-label="Close panel"
             onClick={() => setDrawer("none")}
           />
@@ -179,7 +175,7 @@ export function UniverseShell({
       ) : null}
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 flex border-t border-sky-500/15 bg-[#060b14]/95 backdrop-blur-xl lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 flex border-t border-[var(--color-border)] bg-[var(--color-surface)] lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         aria-label="Mobile"
       >
@@ -205,8 +201,10 @@ export function UniverseShell({
                 }
               }}
               className={clsx(
-                "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] uppercase tracking-wider touch-manipulation",
-                active ? "text-sky-300" : "text-slate-500"
+                "flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[10px] font-medium",
+                active
+                  ? "text-[var(--color-accent-2)]"
+                  : "text-[var(--color-muted)]"
               )}
             >
               <Icon size={18} />

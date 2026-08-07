@@ -144,8 +144,12 @@ export function HudShell({
             >
               Alpha AI
             </span>
-            <span className="hidden text-[11px] text-[var(--color-muted)] sm:block">
-              Staff console
+            <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-muted)]">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-40" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              </span>
+              <span className="hidden sm:inline">Live · staff</span>
             </span>
           </span>
         </Link>
