@@ -29,10 +29,40 @@ export const ALPHA_GITHUB_CATALOG = {
       product: "Learn Dispatch Academy",
       url_live: "https://learndispatch.alphasolutions.software",
     },
+    {
+      name: "Alpha-Academy",
+      url: "https://github.com/Alpha-Solutions-Services/Alpha-Academy",
+      product: "Alpha Academy",
+      url_live: "https://academy.alphasolutions.software",
+    },
+    {
+      name: "Freight",
+      url: "https://github.com/Alpha-Solutions-Services/Freight",
+      product: "Freight marketing (AFN)",
+      url_live: "https://afn.alphasolutions.software",
+    },
+    {
+      name: "Giftify",
+      url: "https://github.com/Alpha-Solutions-Services/Giftify",
+      product: "Giftify storefront",
+      url_live: "https://giftifystore.com.pk",
+    },
+    {
+      name: "AFN-S",
+      url: "https://github.com/Alpha-Solutions-Services/AFN-S",
+      product: "Freight Sales CRM",
+      url_live: "https://freightsales.alphasolutions.software",
+    },
+    {
+      name: "studio-alpha-solutions-services-llc",
+      url: "https://github.com/Alpha-Solutions-Services/studio-alpha-solutions-services-llc",
+      product: "Sanity CMS Studio",
+      url_live: "https://profile.alphasolutions.software",
+    },
   ],
   notes: [
     "Marketing site lives in the alpha-solutions monorepo / website package and deploys to www.alphasolutions.software",
-    "Sanity Studio: studio-alpha-solutions-services-llc (CMS content for site)",
+    "Sanity Studio: https://github.com/Alpha-Solutions-Services/studio-alpha-solutions-services-llc → https://profile.alphasolutions.software",
     "Freight Sales portal exists separately; Universe planet disabled until tools ship",
   ],
 };

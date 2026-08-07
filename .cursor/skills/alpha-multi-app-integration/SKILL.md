@@ -17,11 +17,13 @@ Always use service role for staff tools via `getServiceRoleClient()`.
 | App | Live URL | Folder |
 |-----|----------|--------|
 | Marketing | www.alphasolutions.software | alpha-solutions / site |
+| Freight marketing | afn.alphasolutions.software | Freight |
 | Portal | portal.alphasolutions.software | PORTAL |
 | TMS | tms.alphasolutions.software | TMS |
 | Learn | learndispatch.alphasolutions.software | LEARN-DISPATCH |
 | AI | ai.alphasolutions.software | AI |
-| GitHub org | github.com/Alpha-Solutions-Services | AI, ALPHA-Portal, TMS, Learn-Dispatch |
+| Academy | academy.alphasolutions.software | academy |
+| GitHub org | github.com/Alpha-Solutions-Services | AI, ALPHA-Portal, TMS, Learn-Dispatch, Alpha-Academy, Freight |
 
 ## Tool modules (`AI/src/lib/alpha/tools/`)
 - `org.ts` — people, students, carriers, business snapshot
