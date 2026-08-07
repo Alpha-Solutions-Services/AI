@@ -3,26 +3,27 @@
 @tailwind utilities;
 
 :root {
-  --color-bg: #030712;
-  --color-surface: rgba(10, 22, 40, 0.45);
-  --color-surface-2: rgba(14, 32, 56, 0.55);
-  --color-border: rgba(125, 211, 252, 0.18);
-  --color-border-glow: rgba(56, 189, 248, 0.42);
-  --color-accent: #38bdf8;
-  --color-accent-2: #7dd3fc;
-  --color-accent-dim: rgba(56, 189, 248, 0.14);
-  --color-accent-glow: rgba(56, 189, 248, 0.32);
-  --color-gold: #fbbf24;
-  --color-gold-dim: rgba(251, 191, 36, 0.14);
-  --color-chrome: #9ec9e6;
-  --color-text: #f0f9ff;
-  --color-muted: #6b94b3;
-  --glow-sm: 0 0 18px rgba(56, 189, 248, 0.28);
-  --glow-md: 0 12px 48px rgba(0, 0, 0, 0.45), 0 0 40px rgba(56, 189, 248, 0.12);
-  --radius-sm: 16px;
-  --radius-md: 20px;
-  --radius-lg: 28px;
-  --radius-xl: 36px;
+  /* Professional staff console — slate + restrained blue */
+  --color-bg: #0b0f14;
+  --color-surface: #121821;
+  --color-surface-2: #18202b;
+  --color-border: #243041;
+  --color-border-glow: #243041;
+  --color-accent: #3b82f6;
+  --color-accent-2: #93c5fd;
+  --color-accent-dim: rgba(59, 130, 246, 0.12);
+  --color-accent-glow: rgba(59, 130, 246, 0.18);
+  --color-gold: #d4a017;
+  --color-gold-dim: rgba(212, 160, 23, 0.12);
+  --color-chrome: #b6c2d1;
+  --color-text: #e8eef6;
+  --color-muted: #8b9aab;
+  --glow-sm: none;
+  --glow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
 }
 
 * {
@@ -55,13 +56,14 @@ h6 {
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(56, 189, 248, 0.28);
+  background: #2a3648;
   border-radius: 999px;
 }
 ::selection {
@@ -71,97 +73,54 @@ h6 {
 
 @layer components {
   .hud-glass {
-    @apply border backdrop-blur-2xl;
-    background:
-      linear-gradient(
-        145deg,
-        rgba(255, 255, 255, 0.14) 0%,
-        rgba(56, 189, 248, 0.1) 22%,
-        rgba(8, 18, 34, 0.38) 55%,
-        rgba(4, 10, 20, 0.48) 100%
-      );
-    border-color: rgba(125, 211, 252, 0.22);
-    border-radius: var(--radius-xl);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.18),
-      inset 0 -1px 0 rgba(56, 189, 248, 0.06),
-      0 18px 50px rgba(0, 0, 0, 0.4),
-      0 0 0 1px rgba(255, 255, 255, 0.03);
+    @apply border;
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: none;
   }
 
   .glass-chip {
-    @apply border backdrop-blur-xl;
-    background:
-      linear-gradient(
-        155deg,
-        rgba(255, 255, 255, 0.14) 0%,
-        rgba(56, 189, 248, 0.08) 40%,
-        rgba(6, 14, 28, 0.35) 100%
-      );
-    border-color: rgba(125, 211, 252, 0.2);
+    @apply border;
+    background: var(--color-surface-2);
+    border-color: var(--color-border);
     border-radius: var(--radius-md);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      0 8px 24px rgba(0, 0, 0, 0.22);
+    box-shadow: none;
   }
 
   .glass-strong {
-    @apply border backdrop-blur-2xl;
-    background:
-      linear-gradient(
-        160deg,
-        rgba(255, 255, 255, 0.18) 0%,
-        rgba(56, 189, 248, 0.12) 28%,
-        rgba(8, 20, 38, 0.48) 100%
-      );
-    border-color: rgba(125, 211, 252, 0.32);
+    @apply border;
+    background: var(--color-surface-2);
+    border-color: var(--color-accent);
     border-radius: var(--radius-md);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      0 12px 36px rgba(0, 0, 0, 0.28),
-      0 0 28px rgba(56, 189, 248, 0.1);
+    box-shadow: none;
   }
 
   .hud-panel-title {
-    @apply text-[10px] font-semibold uppercase tracking-[0.22em];
-    color: var(--color-accent-2);
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em];
+    color: var(--color-muted);
   }
 
-  .hud-scanlines {
-    background-image: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 3px,
-      rgba(56, 189, 248, 0.012) 3px,
-      rgba(56, 189, 248, 0.012) 6px
-    );
-  }
-
-  .hud-grid {
-    background-image:
-      radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.12), transparent 55%),
-      radial-gradient(ellipse at 80% 100%, rgba(14, 165, 233, 0.08), transparent 45%),
-      radial-gradient(ellipse at 10% 80%, rgba(56, 189, 248, 0.05), transparent 40%);
-  }
-
+  .hud-scanlines,
+  .hud-grid,
   .alpha-ambient {
-    background:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(56, 189, 248, 0.18), transparent 55%),
-      radial-gradient(ellipse 60% 40% at 100% 50%, rgba(14, 165, 233, 0.08), transparent 50%),
-      radial-gradient(ellipse 50% 35% at 0% 80%, rgba(56, 189, 248, 0.07), transparent 45%),
-      linear-gradient(180deg, #030712 0%, #061018 50%, #030712 100%);
+    display: none;
   }
 
-  /* Uiverse HUD agent core — expands while speaking */
+  .alpha-shell-bg {
+    background: var(--color-bg);
+  }
+
+  /* Speaking orb — keep functional, less neon */
   .svg-frame {
     position: relative;
-    width: min(72vw, 280px);
-    height: min(72vw, 280px);
+    width: min(56vw, 220px);
+    height: min(56vw, 220px);
     transform-style: preserve-3d;
     display: flex;
     justify-content: center;
     align-items: center;
-    filter: drop-shadow(0 0 18px rgba(0, 255, 255, 0.25));
+    filter: drop-shadow(0 8px 24px rgba(59, 130, 246, 0.2));
   }
 
   .svg-frame svg {
@@ -205,7 +164,7 @@ h6 {
   .svg-frame #out3 {
     animation: alpha-hud-spin 3s ease-in-out infinite alternate;
     transform-origin: center;
-    stroke: #fbbf24;
+    stroke: #d4a017;
   }
 
   .svg-frame #inner3,
@@ -215,14 +174,13 @@ h6 {
   }
 
   .svg-frame #center1 {
-    fill: #fbbf24;
+    fill: #d4a017;
     animation: alpha-hud-spin 2s ease-in-out infinite alternate;
     transform-origin: center;
   }
 
   .svg-frame.is-speaking {
-    filter: drop-shadow(0 0 28px rgba(0, 255, 255, 0.45))
-      drop-shadow(0 0 48px rgba(255, 213, 79, 0.2));
+    filter: drop-shadow(0 10px 28px rgba(59, 130, 246, 0.28));
   }
 }
 

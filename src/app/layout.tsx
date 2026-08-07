@@ -17,15 +17,15 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Alpha AI Agent — JARVIS Command",
+  title: "Alpha AI — Staff Console",
   description:
-    "Alpha Solutions personal staff assistant across Portal, TMS, Learn Dispatch, and the web.",
+    "Alpha Solutions staff assistant across Portal, TMS, Learn Dispatch, and support.",
   robots: { index: false, follow: false },
-  applicationName: "Alpha AI Agent",
+  applicationName: "Alpha AI",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#050a12",
+  themeColor: "#0b0f14",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

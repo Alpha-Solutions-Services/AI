@@ -227,7 +227,7 @@ export function AlphaChat() {
                   type="button"
                   onClick={() => void send(s)}
                   dir="auto"
-                  className="glass-chip rounded-3xl px-3.5 py-3.5 text-left text-[13px] text-[var(--color-chrome)] transition hover:border-[var(--color-border-glow)] hover:bg-white/[0.06]"
+                  className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3.5 py-3 text-left text-[13px] text-[var(--color-chrome)] transition hover:border-[var(--color-accent)]"
                 >
                   {s}
                 </button>
@@ -241,11 +241,11 @@ export function AlphaChat() {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               dir="auto"
-              className={`mx-auto max-w-2xl whitespace-pre-wrap rounded-3xl px-4 py-3 text-[14px] leading-relaxed ${
+              className={`mx-auto max-w-2xl whitespace-pre-wrap rounded-lg px-4 py-3 text-[14px] leading-relaxed ${
                 m.role === "user"
-                  ? "glass-strong ml-auto border-[var(--color-accent)]/35 text-[var(--color-text)]"
+                  ? "ml-auto bg-[var(--color-accent-dim)] text-[var(--color-text)]"
                   : m.role === "assistant"
-                    ? "glass-chip mr-auto text-[var(--color-text)]"
+                    ? "mr-auto border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]"
                     : "text-[var(--color-muted)]"
               }`}
             >
@@ -290,7 +290,7 @@ export function AlphaChat() {
       </div>
 
       <form
-        className="mt-auto shrink-0 border-t border-[var(--color-border)] bg-[rgba(3,7,18,0.55)] px-2.5 py-2.5 backdrop-blur-2xl sm:px-3 sm:py-3.5"
+        className="mt-auto shrink-0 border-t border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-2.5 sm:px-3 sm:py-3"
         onSubmit={(e) => {
           e.preventDefault();
           void send(text);
@@ -321,8 +321,8 @@ export function AlphaChat() {
               onChange={(e) => setText(e.target.value)}
               rows={2}
               dir="auto"
-              placeholder="Ask Alpha AI Agent anything…"
-              className="glass-chip max-h-28 min-h-[48px] flex-1 resize-none rounded-2xl px-4 py-3 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)]/55"
+              placeholder="Ask Alpha…"
+              className="max-h-28 min-h-[48px] flex-1 resize-none rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)]"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -333,7 +333,7 @@ export function AlphaChat() {
             <button
               type="submit"
               disabled={busy || !text.trim()}
-              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-accent)]/45 bg-[var(--color-accent)] text-[#030712] shadow-[var(--glow-sm)] transition disabled:opacity-40"
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent)] text-white transition disabled:opacity-40"
               aria-label="Send"
             >
               <Send size={16} />

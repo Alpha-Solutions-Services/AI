@@ -3,6 +3,7 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/alpha/AppShell";
+import clsx from "clsx";
 
 type SessionRow = {
   id: string;
@@ -25,11 +26,11 @@ type Message = {
   created_at: string;
 };
 
+const FILTERS = ["open", "human", "closed", "all"] as const;
+
 export default function SupportInboxPage() {
   const [email, setEmail] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"open" | "human" | "closed" | "all">(
-    "open"
-  );
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("open");
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -115,35 +116,47 @@ export default function SupportInboxPage() {
     void act("message");
   }
 
+  const leadLine = sessionMeta
+    ? [
+        sessionMeta.lead_name,
+        sessionMeta.lead_email,
+        sessionMeta.lead_phone,
+        sessionMeta.lead_role,
+      ]
+        .filter(Boolean)
+        .join(" · ") || "No lead yet"
+    : "";
+
   return (
     <AppShell email={email} centerOnly>
-      <div className="mx-auto flex h-[calc(100dvh-5rem)] w-full max-w-6xl flex-col px-3 py-4 md:px-6">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-          <div>
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3 sm:px-5">
+          <div className="min-w-0">
             <h1
-              className="text-xl uppercase tracking-[0.16em] text-[var(--color-accent-2)] md:text-2xl"
+              className="text-lg font-semibold tracking-tight text-[var(--color-text)] sm:text-xl"
               style={{ fontFamily: "var(--font-display), sans-serif" }}
             >
               Support inbox
             </h1>
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
-              AFN public chats — join as human when needed.{" "}
-              <Link href="/" className="text-[var(--color-accent)] underline">
-                Jarvis
+            <p className="mt-0.5 text-sm text-[var(--color-muted)]">
+              AFN public chats —{" "}
+              <Link href="/" className="text-[var(--color-accent-2)] hover:underline">
+                Chat
               </Link>
             </p>
           </div>
-          <div className="flex gap-2 text-xs uppercase tracking-wider">
-            {(["open", "human", "closed", "all"] as const).map((f) => (
+          <div className="flex flex-wrap gap-1">
+            {FILTERS.map((f) => (
               <button
                 key={f}
                 type="button"
                 onClick={() => setFilter(f)}
-                className={`border px-3 py-1 ${
+                className={clsx(
+                  "rounded-md px-2.5 py-1 text-xs capitalize",
                   filter === f
-                    ? "border-[var(--color-accent)] text-[var(--color-accent)]"
-                    : "border-[var(--color-border)] text-[var(--color-muted)]"
-                }`}
+                    ? "bg-[var(--color-accent-dim)] text-[var(--color-accent-2)]"
+                    : "text-[var(--color-muted)] hover:bg-white/[0.04]"
+                )}
               >
                 {f}
               </button>
@@ -152,11 +165,19 @@ export default function SupportInboxPage() {
         </div>
 
         {error ? (
-          <p className="mb-2 text-sm text-red-400">{error}</p>
+          <p className="shrink-0 border-b border-red-900/40 bg-red-950/30 px-4 py-2 text-sm text-red-300">
+            {error}
+          </p>
         ) : null}
 
-        <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[280px_1fr]">
-          <aside className="overflow-y-auto border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="grid min-h-0 flex-1 md:grid-cols-[260px_minmax(0,1fr)] lg:grid-cols-[300px_minmax(0,1fr)]">
+          {/* Session list — hide on phone when a chat is open */}
+          <aside
+            className={clsx(
+              "min-h-0 overflow-y-auto border-[var(--color-border)] md:border-r",
+              activeId ? "hidden md:block" : "block"
+            )}
+          >
             {sessions.length === 0 ? (
               <p className="p-4 text-sm text-[var(--color-muted)]">
                 No sessions yet.
@@ -167,19 +188,34 @@ export default function SupportInboxPage() {
                   key={s.id}
                   type="button"
                   onClick={() => setActiveId(s.id)}
-                  className={`block w-full border-b border-[var(--color-border)] px-3 py-3 text-left hover:bg-black/20 ${
-                    activeId === s.id ? "bg-black/30" : ""
-                  }`}
+                  className={clsx(
+                    "block w-full border-b border-[var(--color-border)] px-4 py-3 text-left transition hover:bg-white/[0.03]",
+                    activeId === s.id && "bg-[var(--color-accent-dim)]"
+                  )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-[var(--color-accent)]">
+                    <span
+                      className={clsx(
+                        "rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+                        s.status === "human"
+                          ? "bg-emerald-500/15 text-emerald-300"
+                          : s.status === "closed"
+                            ? "bg-white/5 text-[var(--color-muted)]"
+                            : "bg-sky-500/15 text-sky-300"
+                      )}
+                    >
                       {s.status}
                     </span>
-                    <span className="text-[10px] text-[var(--color-muted)]">
-                      {new Date(s.last_message_at).toLocaleString()}
+                    <span className="text-[11px] text-[var(--color-muted)]">
+                      {new Date(s.last_message_at).toLocaleString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                   </div>
-                  <p className="mt-1 truncate text-sm">
+                  <p className="mt-1.5 truncate text-sm font-medium text-[var(--color-text)]">
                     {s.lead_name || s.lead_email || "Anonymous visitor"}
                   </p>
                   <p className="mt-0.5 truncate text-xs text-[var(--color-muted)]">
@@ -190,33 +226,39 @@ export default function SupportInboxPage() {
             )}
           </aside>
 
-          <section className="flex min-h-0 flex-col border border-[var(--color-border)] bg-[var(--color-surface)]">
+          {/* Transcript */}
+          <section
+            className={clsx(
+              "flex min-h-0 flex-col bg-[var(--color-bg)]",
+              !activeId ? "hidden md:flex" : "flex"
+            )}
+          >
             {!activeId || !sessionMeta ? (
               <p className="m-auto text-sm text-[var(--color-muted)]">
-                Select a session
+                Select a conversation
               </p>
             ) : (
               <>
-                <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-3 py-2">
-                  <span className="text-xs uppercase tracking-wider text-[var(--color-accent-2)]">
+                <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--color-border)] px-3 py-2.5 sm:px-4">
+                  <button
+                    type="button"
+                    className="rounded-md px-2 py-1 text-xs text-[var(--color-muted)] hover:bg-white/[0.04] md:hidden"
+                    onClick={() => setActiveId(null)}
+                  >
+                    ← List
+                  </button>
+                  <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-accent-2)]">
                     {sessionMeta.status}
                   </span>
-                  <span className="text-xs text-[var(--color-muted)]">
-                    {[
-                      sessionMeta.lead_name,
-                      sessionMeta.lead_email,
-                      sessionMeta.lead_phone,
-                      sessionMeta.lead_role,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || "No lead yet"}
+                  <span className="min-w-0 flex-1 truncate text-xs text-[var(--color-muted)] sm:text-sm">
+                    {leadLine}
                   </span>
-                  <div className="ml-auto flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     <button
                       type="button"
                       disabled={busy || sessionMeta.status === "closed"}
                       onClick={() => void act("join")}
-                      className="border border-[var(--color-accent)] px-3 py-1 text-xs uppercase tracking-wider text-[var(--color-accent)] disabled:opacity-40"
+                      className="rounded-md bg-[var(--color-accent)] px-2.5 py-1.5 text-xs font-medium text-white disabled:opacity-40"
                     >
                       Join
                     </button>
@@ -224,41 +266,56 @@ export default function SupportInboxPage() {
                       type="button"
                       disabled={busy}
                       onClick={() => void act("release")}
-                      className="border border-[var(--color-border)] px-3 py-1 text-xs uppercase tracking-wider text-[var(--color-muted)] disabled:opacity-40"
+                      className="rounded-md border border-[var(--color-border)] px-2.5 py-1.5 text-xs text-[var(--color-muted)] disabled:opacity-40"
                     >
-                      Release to AI
+                      Release
                     </button>
                     <button
                       type="button"
                       disabled={busy}
                       onClick={() => void act("close")}
-                      className="border border-[var(--color-border)] px-3 py-1 text-xs uppercase tracking-wider text-[var(--color-muted)] disabled:opacity-40"
+                      className="rounded-md border border-[var(--color-border)] px-2.5 py-1.5 text-xs text-[var(--color-muted)] disabled:opacity-40"
                     >
                       Close
                     </button>
                   </div>
                 </div>
 
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3">
+                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-5">
                   {messages.map((m) => (
                     <div
                       key={m.id}
-                      className={`max-w-[85%] text-sm ${
-                        m.role === "visitor"
-                          ? "ml-auto bg-[var(--color-accent)]/15 px-3 py-2"
-                          : m.role === "staff"
-                            ? "border border-[var(--color-accent-2)] px-3 py-2"
-                            : m.role === "system"
-                              ? "mx-auto text-center text-xs text-[var(--color-muted)]"
-                              : "border border-[var(--color-border)] px-3 py-2"
-                      }`}
+                      className={clsx(
+                        "max-w-[min(100%,36rem)] text-sm leading-relaxed",
+                        m.role === "visitor" && "ml-auto",
+                        m.role === "system" && "mx-auto max-w-md text-center"
+                      )}
                     >
-                      {m.role !== "system" ? (
-                        <p className="mb-1 text-[10px] uppercase tracking-wider text-[var(--color-muted)]">
-                          {m.role}
+                      {m.role === "system" ? (
+                        <p className="text-xs text-[var(--color-muted)]">
+                          {m.content}
                         </p>
-                      ) : null}
-                      <p className="whitespace-pre-wrap">{m.content}</p>
+                      ) : (
+                        <div
+                          className={clsx(
+                            "rounded-lg px-3 py-2",
+                            m.role === "visitor"
+                              ? "bg-[var(--color-accent-dim)] text-[var(--color-text)]"
+                              : m.role === "staff"
+                                ? "border border-[var(--color-accent)] bg-[var(--color-surface)]"
+                                : "border border-[var(--color-border)] bg-[var(--color-surface)]"
+                          )}
+                        >
+                          <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                            {m.role === "staff"
+                              ? "You (staff)"
+                              : m.role === "visitor"
+                                ? "Visitor"
+                                : "Assistant"}
+                          </p>
+                          <p className="whitespace-pre-wrap">{m.content}</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                   <div ref={bottomRef} />
@@ -266,19 +323,21 @@ export default function SupportInboxPage() {
 
                 <form
                   onSubmit={onSend}
-                  className="flex gap-2 border-t border-[var(--color-border)] p-3"
+                  className="flex shrink-0 gap-2 border-t border-[var(--color-border)] bg-[var(--color-surface)] p-3 sm:p-4"
                 >
                   <input
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
-                    placeholder="Message as staff…"
-                    className="flex-1 border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm outline-none focus:border-[var(--color-accent)]"
+                    placeholder="Reply as staff…"
+                    className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg)] px-3 py-2.5 text-sm outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-accent)]"
                     disabled={busy || sessionMeta.status === "closed"}
                   />
                   <button
                     type="submit"
-                    disabled={busy || !draft.trim() || sessionMeta.status === "closed"}
-                    className="bg-[var(--color-accent)] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-black disabled:opacity-40"
+                    disabled={
+                      busy || !draft.trim() || sessionMeta.status === "closed"
+                    }
+                    className="rounded-lg bg-[var(--color-accent)] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
                   >
                     Send
                   </button>

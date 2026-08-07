@@ -3,20 +3,18 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
   BookOpen,
-  CheckCircle2,
   Headphones,
   LayoutDashboard,
   LogOut,
   Orbit,
   Settings,
-  Shield,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import clsx from "clsx";
 import { createClient } from "@/lib/supabase/client";
 
-const BOTTOM_NAV = [
+const NAV = [
   { href: "/", label: "Chat", icon: LayoutDashboard },
   { href: "/universe", label: "Universe", icon: Orbit },
   { href: "/support", label: "Support", icon: Headphones },
@@ -24,167 +22,81 @@ const BOTTOM_NAV = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-function Clock() {
-  const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => {
-    setNow(new Date());
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
+function navActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function SideNav({ pathname }: { pathname: string }) {
   return (
-    <div className="text-right leading-tight">
-      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-chrome)]">
-        {now
-          ? now.toLocaleDateString(undefined, {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-            })
-          : "—"}
-      </p>
-      <p className="font-mono text-sm tabular-nums text-[var(--color-accent-2)]">
-        {now
-          ? now.toLocaleTimeString(undefined, {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            })
-          : "--:--:--"}
-      </p>
-    </div>
+    <nav className="flex flex-col gap-1 p-3" aria-label="Primary">
+      {NAV.map((item) => {
+        const Icon = item.icon;
+        const active = navActive(pathname, item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={clsx(
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
+              active
+                ? "bg-[var(--color-accent-dim)] text-[var(--color-accent-2)]"
+                : "text-[var(--color-muted)] hover:bg-white/[0.04] hover:text-[var(--color-text)]"
+            )}
+          >
+            <Icon size={18} strokeWidth={active ? 2.2 : 1.75} />
+            <span className="font-medium">{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
-function useRealHudStatus() {
-  const [docs, setDocs] = useState<number | null>(null);
-  const [uptime, setUptime] = useState("00:00:00");
-  const [started] = useState(() => Date.now());
-
-  useEffect(() => {
-    const tick = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - started) / 1000);
-      const hh = String(Math.floor(elapsed / 3600)).padStart(2, "0");
-      const mm = String(Math.floor((elapsed % 3600) / 60)).padStart(2, "0");
-      const ss = String(elapsed % 60).padStart(2, "0");
-      setUptime(`${hh}:${mm}:${ss}`);
-    }, 1000);
-    return () => clearInterval(tick);
-  }, [started]);
-
-  useEffect(() => {
-    const pull = () => {
-      void fetch("/api/knowledge/status")
-        .then((r) => (r.ok ? r.json() : null))
-        .then((j) => {
-          if (j && typeof j.documents === "number") setDocs(j.documents);
-        })
-        .catch(() => undefined);
-    };
-    pull();
-    const id = setInterval(pull, 60000);
-    return () => clearInterval(id);
-  }, []);
-
-  return { docs, uptime };
-}
-
 export function LeftHudPanel() {
-  const { docs, uptime } = useRealHudStatus();
-  const links = [
-    { href: "/universe", label: "Alpha Universe", blurb: "Galaxy + Dispatch" },
-    { href: "/universe/dispatch", label: "Dispatch", blurb: "Live TMS loads" },
-    { href: "/support", label: "Support inbox", blurb: "AFN live chats" },
-    { href: "/knowledge", label: "Knowledge", blurb: "Indexed documents" },
-    { href: "/settings", label: "Settings", blurb: "Voice preferences" },
-  ];
-
   return (
-    <aside className="hud-glass flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-3.5 sm:p-4">
-      <div className="flex items-center justify-between">
+    <aside className="flex h-full min-h-0 flex-col overflow-y-auto border border-[var(--color-border)] bg-[var(--color-surface)]">
+      <div className="border-b border-[var(--color-border)] px-4 py-3">
         <p className="hud-panel-title">Workspace</p>
-        <span className="rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-emerald-300">
-          Online
-        </span>
       </div>
-
-      <ul className="space-y-2">
-        {links.map((l) => (
+      <ul className="space-y-1 p-3 text-sm">
+        {[
+          { href: "/universe", label: "Universe", blurb: "Galaxy + modules" },
+          { href: "/universe/dispatch", label: "Dispatch", blurb: "Live loads" },
+          { href: "/support", label: "Support", blurb: "AFN inbox" },
+          { href: "/knowledge", label: "Knowledge", blurb: "Indexed docs" },
+        ].map((l) => (
           <li key={l.href}>
             <Link
               href={l.href}
-              className="glass-chip flex flex-col rounded-2xl px-3 py-2.5 transition hover:border-[var(--color-accent)]/35"
+              className="block rounded-lg px-3 py-2 hover:bg-white/[0.04]"
             >
-              <span className="text-sm text-[var(--color-text)]">{l.label}</span>
-              <span className="text-[11px] text-[var(--color-muted)]">{l.blurb}</span>
+              <span className="text-[var(--color-text)]">{l.label}</span>
+              <span className="mt-0.5 block text-xs text-[var(--color-muted)]">
+                {l.blurb}
+              </span>
             </Link>
           </li>
         ))}
       </ul>
-
-      <div>
-        <p className="hud-panel-title mb-2">Session</p>
-        <div className="glass-chip space-y-2 rounded-2xl px-3 py-3 text-[12px] text-[var(--color-chrome)]">
-          <p className="flex justify-between gap-2">
-            <span className="text-[var(--color-muted)]">Uptime</span>
-            <span className="font-mono tabular-nums">{uptime}</span>
-          </p>
-          <p className="flex justify-between gap-2">
-            <span className="text-[var(--color-muted)]">Docs indexed</span>
-            <span className="font-mono tabular-nums">
-              {docs != null ? docs : "—"}
-            </span>
-          </p>
-          <p className="flex justify-between gap-2">
-            <span className="text-[var(--color-muted)]">Write gate</span>
-            <span className="text-emerald-300">Confirm required</span>
-          </p>
-        </div>
-      </div>
     </aside>
   );
 }
 
 export function RightHudPanel() {
   return (
-    <aside className="hud-glass flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-3.5 sm:p-4">
-      <div className="flex items-center justify-between">
-        <p className="hud-panel-title">Mission</p>
-      </div>
-
-      <div>
-        <p className="text-[12px] leading-relaxed text-[var(--color-chrome)]">
-          Staff command assistant for Portal, TMS Dispatch, Learn Academy, and
-          the open web. Destructive actions require confirmation.
-        </p>
-        <Link
-          href="/universe"
-          className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-accent-2)] transition hover:bg-[var(--color-accent)]/20"
-        >
-          <Orbit size={12} /> Open Universe
-        </Link>
-      </div>
-
-      <div>
-        <p className="hud-panel-title mb-3">Controls</p>
-        <ul className="space-y-2">
-          {[
-            { icon: Shield, k: "Security", v: "Staff allowlist" },
-            { icon: CheckCircle2, k: "Writes", v: "Confirm first" },
-            { icon: BookOpen, k: "Memory", v: "Knowledge index" },
-          ].map((s) => (
-            <li
-              key={s.k}
-              className="glass-chip flex items-center justify-between rounded-2xl px-3 py-2.5"
-            >
-              <span className="flex items-center gap-2 text-[11px] text-[var(--color-muted)]">
-                <s.icon size={12} className="text-[var(--color-accent)]" />
-                {s.k}
-              </span>
-              <span className="text-xs text-[var(--color-accent-2)]">{s.v}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+    <aside className="flex h-full min-h-0 flex-col overflow-y-auto border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+      <p className="hud-panel-title mb-3">About</p>
+      <p className="text-sm leading-relaxed text-[var(--color-muted)]">
+        Staff assistant for Portal, TMS, Learn Academy, and support handoffs.
+        Writes require confirmation.
+      </p>
+      <Link
+        href="/universe"
+        className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2 text-sm text-[var(--color-accent-2)] hover:border-[var(--color-accent)]"
+      >
+        <Orbit size={14} /> Open Universe
+      </Link>
     </aside>
   );
 }
@@ -198,11 +110,15 @@ export function HudShell({
   email?: string | null;
   centerOnly?: boolean;
 }) {
-  const pathname = usePathname();
+  const pathname = usePathname() || "/";
   const router = useRouter();
-  const [mobilePanel, setMobilePanel] = useState<"none" | "left" | "right">(
-    "none"
-  );
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   async function signOut() {
     const supabase = createClient();
@@ -211,160 +127,112 @@ export function HudShell({
     router.refresh();
   }
 
+  const pageTitle =
+    NAV.find((n) => navActive(pathname, n.href))?.label || "Alpha AI";
+
   return (
-    <div className="relative flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden">
-      <div aria-hidden className="alpha-ambient pointer-events-none absolute inset-0" />
-      <div aria-hidden className="hud-grid pointer-events-none absolute inset-0" />
-      <div aria-hidden className="hud-scanlines pointer-events-none absolute inset-0 opacity-60" />
-
-      <header className="relative z-40 flex shrink-0 items-center gap-2 border-b border-[var(--color-border)] bg-[rgba(3,7,18,0.55)] px-2.5 py-2.5 backdrop-blur-2xl sm:grid sm:grid-cols-[1fr_auto_1fr] sm:px-5 sm:py-3">
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" />
+    <div className="alpha-shell-bg flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden">
+      <header className="z-40 flex h-14 shrink-0 items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 sm:px-5">
+        <Link href="/" className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accent)] text-sm font-bold text-white">
+            A
           </span>
-          <div className="hidden sm:block">
-            <p className="text-[9px] uppercase tracking-[0.24em] text-[var(--color-muted)]">
-              Status
-            </p>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">
-              Online
-            </p>
-          </div>
-          {!centerOnly ? (
-            <div className="flex gap-1 lg:hidden">
-              <button
-                type="button"
-                onClick={() =>
-                  setMobilePanel((p) => (p === "left" ? "none" : "left"))
-                }
-                className="glass-chip rounded-full px-2.5 py-1.5 text-[10px] uppercase tracking-wider text-[var(--color-accent)]"
-              >
-                Menu
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setMobilePanel((p) => (p === "right" ? "none" : "right"))
-                }
-                className="glass-chip rounded-full px-2.5 py-1.5 text-[10px] uppercase tracking-wider text-[var(--color-accent)]"
-              >
-                Info
-              </button>
-            </div>
+          <span className="min-w-0">
+            <span
+              className="block truncate text-sm font-semibold tracking-tight text-[var(--color-text)]"
+              style={{ fontFamily: "var(--font-display), sans-serif" }}
+            >
+              Alpha AI
+            </span>
+            <span className="hidden text-[11px] text-[var(--color-muted)] sm:block">
+              Staff console
+            </span>
+          </span>
+        </Link>
+
+        <div className="mx-auto hidden text-sm text-[var(--color-muted)] md:block">
+          {pageTitle}
+        </div>
+
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          {now ? (
+            <span className="hidden text-xs tabular-nums text-[var(--color-muted)] lg:inline">
+              {now.toLocaleString(undefined, {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
           ) : null}
-        </div>
-
-        <div className="min-w-0 flex-1 text-center sm:flex-none">
-          <h1
-            className="truncate text-xs uppercase tracking-[0.16em] text-[var(--color-accent-2)] sm:text-sm md:text-base md:tracking-[0.2em]"
-            style={{
-              fontFamily: "var(--font-display), sans-serif",
-              textShadow: "0 0 28px rgba(56,189,248,0.4)",
-            }}
-          >
-            Alpha AI Agent
-          </h1>
-          <p className="mt-0.5 hidden text-[10px] uppercase tracking-[0.22em] text-[var(--color-muted)] sm:block">
-            Staff command console
-          </p>
-        </div>
-
-        <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-3">
-          <Link
-            href="/support"
-            className="inline-flex items-center gap-1 rounded-xl border border-[var(--color-border)] bg-white/5 px-2 py-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)] hover:border-[var(--color-accent)]/35 hover:text-[var(--color-accent-2)] sm:rounded-2xl sm:px-3 sm:text-[11px]"
-          >
-            <Headphones size={14} />
-            <span className="hidden sm:inline">Support</span>
-          </Link>
-          <Link
-            href="/universe"
-            className="inline-flex items-center gap-1 rounded-xl border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/10 px-2 py-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-accent-2)] sm:rounded-2xl sm:px-3 sm:text-[11px]"
-          >
-            <Orbit size={14} />
-            <span className="hidden xs:inline sm:inline">Universe</span>
-          </Link>
-          <div className="hidden md:block">
-            <Clock />
-          </div>
+          {email ? (
+            <span className="hidden max-w-[180px] truncate text-xs text-[var(--color-chrome)] xl:inline">
+              {email}
+            </span>
+          ) : null}
           <button
             type="button"
             onClick={() => void signOut()}
-            className="glass-chip rounded-xl p-2 text-[var(--color-muted)] transition hover:text-[var(--color-accent)] sm:rounded-2xl sm:p-2.5"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] px-2.5 py-1.5 text-xs text-[var(--color-muted)] transition hover:border-[var(--color-accent)] hover:text-[var(--color-text)]"
             aria-label="Sign out"
           >
-            <LogOut size={16} />
+            <LogOut size={14} />
+            <span className="hidden sm:inline">Sign out</span>
           </button>
         </div>
       </header>
 
-      <div
-        className={clsx(
-          "relative z-10 mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-2.5 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] sm:gap-3.5 sm:p-3.5 lg:pb-3.5",
-          !centerOnly &&
-            "lg:grid lg:grid-cols-[220px_minmax(0,1fr)_220px] xl:grid-cols-[260px_minmax(0,1fr)_260px] 2xl:grid-cols-[280px_minmax(0,1fr)_280px]"
-        )}
-      >
-        {!centerOnly ? (
-          <div className="hidden min-h-0 lg:block">
-            <LeftHudPanel />
+      <div className="flex min-h-0 flex-1">
+        {/* Laptop+ primary nav */}
+        <aside className="hidden w-52 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] md:flex lg:w-56">
+          <SideNav pathname={pathname} />
+          <div className="mt-auto border-t border-[var(--color-border)] p-3 text-[11px] text-[var(--color-muted)]">
+            Confirm required for writes
           </div>
-        ) : null}
+        </aside>
 
-        <main className="hud-glass relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          {children}
-        </main>
+        <div
+          className={clsx(
+            "flex min-h-0 min-w-0 flex-1",
+            !centerOnly && "xl:grid xl:grid-cols-[minmax(0,1fr)_240px]"
+          )}
+        >
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-[4.25rem] md:pb-0">
+            {children}
+          </main>
 
-        {!centerOnly ? (
-          <div className="hidden min-h-0 lg:block">
-            <RightHudPanel />
-          </div>
-        ) : null}
+          {!centerOnly ? (
+            <div className="hidden min-h-0 border-l border-[var(--color-border)] xl:block">
+              <RightHudPanel />
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      {/* Mobile drawers above backdrop */}
-      {mobilePanel !== "none" ? (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-[55] bg-black/55 backdrop-blur-sm lg:hidden"
-            aria-label="Close panel"
-            onClick={() => setMobilePanel("none")}
-          />
-          <div className="fixed inset-x-3 top-[4.5rem] z-[60] max-h-[70dvh] overflow-auto lg:hidden">
-            {mobilePanel === "left" ? <LeftHudPanel /> : <RightHudPanel />}
-          </div>
-        </>
-      ) : null}
-
+      {/* Phone-only bottom nav */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--color-border)] bg-[rgba(3,7,18,0.7)] backdrop-blur-2xl"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--color-border)] bg-[var(--color-surface)] md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-        aria-label="Primary"
+        aria-label="Mobile"
       >
-        <ul className="mx-auto flex max-w-[1600px] justify-around gap-1 px-2 py-2 sm:justify-center sm:gap-2 sm:px-3">
-          {BOTTOM_NAV.map((item) => {
+        <ul className="grid grid-cols-5 gap-0 px-1 py-1">
+          {NAV.map((item) => {
             const Icon = item.icon;
-            const active =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active = navActive(pathname, item.href);
             return (
-              <li key={item.label} className="min-w-0 flex-1 sm:flex-none">
+              <li key={item.href}>
                 <Link
                   href={item.href}
                   className={clsx(
-                    "flex flex-col items-center gap-1 rounded-2xl border px-2 py-2.5 text-center transition sm:min-w-[5.5rem]",
+                    "flex flex-col items-center gap-0.5 rounded-lg px-1 py-2 text-center",
                     active
-                      ? "glass-strong border-[var(--color-accent)]/40 text-[var(--color-accent-2)] shadow-[0_0_22px_rgba(56,189,248,0.22)]"
-                      : "border-transparent text-[var(--color-muted)] hover:border-[var(--color-border)] hover:bg-white/[0.04] hover:text-[var(--color-chrome)]"
+                      ? "text-[var(--color-accent-2)]"
+                      : "text-[var(--color-muted)]"
                   )}
                 >
-                  <Icon size={16} strokeWidth={active ? 2.25 : 1.75} />
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.12em]">
-                    {item.label}
-                  </span>
+                  <Icon size={18} strokeWidth={active ? 2.2 : 1.75} />
+                  <span className="text-[10px] font-medium">{item.label}</span>
                 </Link>
               </li>
             );
