@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   BookOpen,
   CheckCircle2,
+  Headphones,
   LayoutDashboard,
   LogOut,
   Orbit,
@@ -18,6 +19,7 @@ import { createClient } from "@/lib/supabase/client";
 const BOTTOM_NAV = [
   { href: "/", label: "Chat", icon: LayoutDashboard },
   { href: "/universe", label: "Universe", icon: Orbit },
+  { href: "/support", label: "Support", icon: Headphones },
   { href: "/knowledge", label: "Knowledge", icon: BookOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -91,6 +93,7 @@ export function LeftHudPanel() {
   const links = [
     { href: "/universe", label: "Alpha Universe", blurb: "Galaxy + Dispatch" },
     { href: "/universe/dispatch", label: "Dispatch", blurb: "Live TMS loads" },
+    { href: "/support", label: "Support inbox", blurb: "AFN live chats" },
     { href: "/knowledge", label: "Knowledge", blurb: "Indexed documents" },
     { href: "/settings", label: "Settings", blurb: "Voice preferences" },
   ];
@@ -268,6 +271,13 @@ export function HudShell({
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-3">
+          <Link
+            href="/support"
+            className="inline-flex items-center gap-1 rounded-xl border border-[var(--color-border)] bg-white/5 px-2 py-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-muted)] hover:border-[var(--color-accent)]/35 hover:text-[var(--color-accent-2)] sm:rounded-2xl sm:px-3 sm:text-[11px]"
+          >
+            <Headphones size={14} />
+            <span className="hidden sm:inline">Support</span>
+          </Link>
           <Link
             href="/universe"
             className="inline-flex items-center gap-1 rounded-xl border border-[var(--color-accent)]/35 bg-[var(--color-accent)]/10 px-2 py-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-accent-2)] sm:rounded-2xl sm:px-3 sm:text-[11px]"

@@ -6,7 +6,8 @@
     "dev": "next dev -p 3004",
     "build": "next build",
     "start": "next start -p 3004",
-    "lint": "next lint"
+    "lint": "next lint",
+    "support:security-check": "node scripts/support-security-check.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",

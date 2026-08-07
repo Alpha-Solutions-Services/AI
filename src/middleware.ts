@@ -41,7 +41,11 @@ export async function middleware(request: NextRequest) {
   const isPublic =
     pathname === "/login" ||
     pathname.startsWith("/auth/") ||
-    pathname.startsWith("/api/cron/");
+    pathname.startsWith("/api/cron/") ||
+    pathname.startsWith("/api/support/session") ||
+    pathname.startsWith("/api/support/chat") ||
+    pathname.startsWith("/api/support/lead");
+  // Staff support inbox APIs stay auth-gated via requireAlphaStaff (not listed above).
 
   if (!isApi && !isPublic && !user) {
     const login = new URL("/login", request.url);
@@ -61,6 +65,8 @@ export const config = {
     "/",
     "/universe",
     "/universe/:path*",
+    "/support",
+    "/support/:path*",
     "/settings",
     "/settings/:path*",
     "/knowledge",
