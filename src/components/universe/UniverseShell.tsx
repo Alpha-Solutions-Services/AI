@@ -50,7 +50,8 @@ export function UniverseShell({
   useUniverseOverview();
 
   return (
-    <div className="relative flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
+    <div className="aurora relative flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-[var(--color-bg)] text-[var(--color-text)]">
+      <div className="aurora-bg" aria-hidden />
       <header className="relative z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 lg:hidden">
         <button
           type="button"

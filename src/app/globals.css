@@ -195,3 +195,98 @@ h6 {
     transform: rotate(360deg);
   }
 }
+
+/* ============================================================
+   Aurora Glass — Universe scope only (does not touch "/" console)
+   Translucent glass surfaces + drifting aurora backdrop.
+   ============================================================ */
+.aurora {
+  --color-bg: #070a12;
+  --color-surface: rgba(18, 24, 38, 0.5);
+  --color-surface-2: rgba(30, 38, 56, 0.58);
+  --color-border: rgba(148, 163, 184, 0.14);
+  --color-border-glow: rgba(94, 234, 212, 0.28);
+  --color-accent: #5eead4;
+  --color-accent-2: #a5b4fc;
+  --color-accent-dim: rgba(94, 234, 212, 0.12);
+  --color-accent-glow: rgba(94, 234, 212, 0.2);
+  --color-chrome: #cdd8ea;
+  --color-text: #eef2fb;
+  --color-muted: #94a3b8;
+}
+
+/* Frost the translucent surfaces used across the Universe shell */
+.aurora .bg-\[var\(--color-surface\)\],
+.aurora .bg-\[var\(--color-surface-2\)\],
+.aurora .hud-glass,
+.aurora .glass-chip,
+.aurora .glass-strong {
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+}
+
+/* Drifting aurora backdrop layer */
+.aurora-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(80% 60% at 15% 8%, rgba(45, 212, 191, 0.1), transparent 60%),
+    radial-gradient(70% 60% at 85% 18%, rgba(129, 140, 248, 0.12), transparent 60%),
+    radial-gradient(90% 70% at 50% 105%, rgba(217, 70, 239, 0.1), transparent 60%),
+    var(--color-bg);
+}
+
+.aurora-bg::before,
+.aurora-bg::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(72px);
+  opacity: 0.55;
+}
+
+.aurora-bg::before {
+  width: 46vw;
+  height: 46vw;
+  left: -8vw;
+  top: -12vh;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.5), transparent 65%);
+  animation: aurora-drift-1 26s ease-in-out infinite alternate;
+}
+
+.aurora-bg::after {
+  width: 52vw;
+  height: 52vw;
+  right: -12vw;
+  top: 6vh;
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.5), transparent 65%);
+  animation: aurora-drift-2 32s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift-1 {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(12vw, 10vh) scale(1.15);
+  }
+}
+
+@keyframes aurora-drift-2 {
+  0% {
+    transform: translate(0, 0) scale(1.1);
+  }
+  100% {
+    transform: translate(-10vw, 6vh) scale(0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-bg::before,
+  .aurora-bg::after {
+    animation: none;
+  }
+}
