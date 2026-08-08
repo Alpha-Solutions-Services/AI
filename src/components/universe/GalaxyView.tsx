@@ -227,14 +227,16 @@ export function GalaxyView() {
   const reduce = useReducedMotion();
 
   const layout = useMemo(() => {
+    const clamp = (v: number, lo: number, hi: number) =>
+      Math.min(hi, Math.max(lo, v));
     return PLANETS.map((p) => {
       const rad = (p.orbit.angleDeg * Math.PI) / 180;
-      const rx = 36 * p.orbit.radius;
-      const ry = 26 * p.orbit.radius;
+      const rx = 27 * p.orbit.radius;
+      const ry = 24 * p.orbit.radius;
       return {
         planet: p,
-        x: 50 + Math.cos(rad) * rx,
-        y: 50 + Math.sin(rad) * ry,
+        x: clamp(50 + Math.cos(rad) * rx, 9, 91),
+        y: clamp(50 + Math.sin(rad) * ry, 13, 87),
       };
     });
   }, []);
