@@ -45,7 +45,6 @@ function PlanetOrb({
           : {
               opacity: dim,
               scale: lit ? 1.12 : 1,
-              y: [0, index % 2 === 0 ? -5 : 4, 0],
             }
       }
       transition={
@@ -54,12 +53,6 @@ function PlanetOrb({
           : {
               opacity: { duration: 0.35, delay: index * 0.04 },
               scale: { duration: 0.22 },
-              y: {
-                duration: 4.2 + (index % 3) * 0.4,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: index * 0.12,
-              },
             }
       }
       onMouseEnter={() => setHover(true)}
@@ -320,49 +313,34 @@ export function GalaxyView() {
               </filter>
             </defs>
 
-            {/* Soft depth under-spokes */}
-            {layout
-              .filter((l) => l.planet.enabled)
-              .map(({ planet, x, y }) => (
-                <line
-                  key={`spoke-shadow-${planet.id}`}
-                  x1={50}
-                  y1={50}
-                  x2={x}
-                  y2={y}
-                  stroke="rgba(0,0,0,0.5)"
-                  strokeWidth={0.9}
-                  strokeLinecap="round"
-                  opacity={0.4}
-                />
-              ))}
-
-            {/* Star → planet energy spokes */}
-            {layout
-              .filter((l) => l.planet.enabled)
-              .map(({ planet, x, y }) => (
+            {/* Star → planet spokes for EVERY planet (bright = live, faint = soon) */}
+            {layout.map(({ planet, x, y }) => {
+              const on = planet.enabled;
+              return (
                 <g key={`spoke-${planet.id}`} filter="url(#link-glow)">
+                  {/* halo */}
                   <line
                     x1={50}
                     y1={50}
                     x2={x}
                     y2={y}
                     stroke={planet.theme.primary}
-                    strokeOpacity={0.2}
-                    strokeWidth={0.85}
+                    strokeOpacity={on ? 0.22 : 0.08}
+                    strokeWidth={on ? 0.9 : 0.6}
                     strokeLinecap="round"
                   />
+                  {/* core */}
                   <line
                     x1={50}
                     y1={50}
                     x2={x}
                     y2={y}
                     stroke={planet.theme.primary}
-                    strokeOpacity={0.75}
-                    strokeWidth={0.32}
+                    strokeOpacity={on ? 0.8 : 0.28}
+                    strokeWidth={on ? 0.34 : 0.2}
                     strokeLinecap="round"
                   />
-                  {!reduce ? (
+                  {on && !reduce ? (
                     <circle r={0.45} fill={planet.theme.primary} opacity={0.95}>
                       <animate
                         attributeName="cx"
@@ -379,7 +357,8 @@ export function GalaxyView() {
                     </circle>
                   ) : null}
                 </g>
-              ))}
+              );
+            })}
 
             {beamTarget ? (
               <g filter="url(#link-glow-strong)">
