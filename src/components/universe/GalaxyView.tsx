@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { ChevronRight, RotateCcw } from "lucide-react";
@@ -218,25 +218,52 @@ export function GalaxyView() {
   };
   const reduce = useReducedMotion();
 
-  const layout = useMemo(() => {
-    const clamp = (v: number, lo: number, hi: number) =>
-      Math.min(hi, Math.max(lo, v));
+  // Single source of truth: measure the orbit stage in pixels, then place BOTH
+  // the SVG links and the HTML planet orbs from the same numbers. This makes
+  // link/planet misalignment impossible regardless of container aspect ratio.
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [stage, setStage] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = () =>
+      setStage({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const center = useMemo(
+    () => ({ x: stage.w / 2, y: stage.h / 2 }),
+    [stage.w, stage.h]
+  );
+
+  const nodes = useMemo(() => {
+    const cx = stage.w / 2;
+    const cy = stage.h / 2;
+    // Leave margin so orbs + labels never clip the stage edges.
+    const rx = (stage.w / 2) * 0.82;
+    const ry = (stage.h / 2) * 0.82;
     return PLANETS.map((p) => {
       const rad = (p.orbit.angleDeg * Math.PI) / 180;
-      const rx = 27 * p.orbit.radius;
-      const ry = 24 * p.orbit.radius;
+      // Compress radius variance (1.05–1.55 -> 0.6–0.96) for a tidy ring.
+      const rf = 0.6 + (p.orbit.radius - 1.05) * 0.72;
       return {
         planet: p,
-        x: clamp(50 + Math.cos(rad) * rx, 9, 91),
-        y: clamp(50 + Math.sin(rad) * ry, 13, 87),
+        x: cx + Math.cos(rad) * rx * rf,
+        y: cy + Math.sin(rad) * ry * rf,
       };
     });
-  }, []);
+  }, [stage.w, stage.h]);
+
+  const ready = stage.w > 0 && stage.h > 0;
 
   const beamTarget = useMemo(() => {
     if (!beamPlanetId) return null;
-    return layout.find((l) => l.planet.id === beamPlanetId) ?? null;
-  }, [beamPlanetId, layout]);
+    return nodes.find((n) => n.planet.id === beamPlanetId) ?? null;
+  }, [beamPlanetId, nodes]);
 
   useEffect(() => {
     if (!beamPlanetId) return;
@@ -275,11 +302,14 @@ export function GalaxyView() {
       {/* Desktop orbit — open canvas, no bordered “wall” frame */}
       <div className="relative mx-auto hidden min-h-0 w-full max-w-5xl flex-1 flex-col px-2 pt-12 lg:flex">
         <div
+          ref={stageRef}
           className="relative mx-auto w-full flex-1 overflow-visible"
           style={{ minHeight: 400, maxHeight: "min(58vh, 560px)" }}
         >
           <svg
-            className="pointer-events-none absolute inset-0 z-[4] h-full w-full overflow-visible"
+            className="pointer-events-none absolute inset-0 z-[4] overflow-visible"
+            width={stage.w}
+            height={stage.h}
             aria-hidden
           >
             <defs>
@@ -311,77 +341,76 @@ export function GalaxyView() {
               </filter>
             </defs>
 
-            {/* Star → planet spokes for EVERY planet (bright = live, faint = soon).
-                Percentage coords map 1:1 to the orbs' left/top %, so lines always
-                terminate exactly at each planet regardless of container aspect. */}
-            {layout.map(({ planet, x, y }) => {
-              const on = planet.enabled;
-              return (
-                <g key={`spoke-${planet.id}`} filter="url(#link-glow)">
-                  {/* halo */}
-                  <line
-                    x1="50%"
-                    y1="50%"
-                    x2={`${x}%`}
-                    y2={`${y}%`}
-                    stroke={planet.theme.primary}
-                    strokeOpacity={on ? 0.22 : 0.08}
-                    strokeWidth={on ? 5 : 3}
-                    strokeLinecap="round"
-                  />
-                  {/* core */}
-                  <line
-                    x1="50%"
-                    y1="50%"
-                    x2={`${x}%`}
-                    y2={`${y}%`}
-                    stroke={planet.theme.primary}
-                    strokeOpacity={on ? 0.8 : 0.28}
-                    strokeWidth={on ? 2 : 1.2}
-                    strokeLinecap="round"
-                  />
-                  {on && !reduce ? (
-                    <circle
-                      cx="50%"
-                      cy="50%"
-                      r={3}
-                      fill={planet.theme.primary}
-                      opacity={0.95}
-                    >
-                      <animate
-                        attributeName="cx"
-                        values={`50%;${x}%`}
-                        dur={`${3.2 + (Math.abs(planet.orbit.angleDeg) % 50) / 25}s`}
-                        repeatCount="indefinite"
+            {/* Star → planet spokes for EVERY planet, drawn in the SAME pixel
+                space as the orbs, so every line ends exactly at its planet. */}
+            {ready
+              ? nodes.map(({ planet, x, y }) => {
+                  const on = planet.enabled;
+                  return (
+                    <g key={`spoke-${planet.id}`} filter="url(#link-glow)">
+                      <line
+                        x1={center.x}
+                        y1={center.y}
+                        x2={x}
+                        y2={y}
+                        stroke={planet.theme.primary}
+                        strokeOpacity={on ? 0.22 : 0.08}
+                        strokeWidth={on ? 5 : 3}
+                        strokeLinecap="round"
                       />
-                      <animate
-                        attributeName="cy"
-                        values={`50%;${y}%`}
-                        dur={`${3.2 + (Math.abs(planet.orbit.angleDeg) % 50) / 25}s`}
-                        repeatCount="indefinite"
+                      <line
+                        x1={center.x}
+                        y1={center.y}
+                        x2={x}
+                        y2={y}
+                        stroke={planet.theme.primary}
+                        strokeOpacity={on ? 0.8 : 0.28}
+                        strokeWidth={on ? 2 : 1.2}
+                        strokeLinecap="round"
                       />
-                    </circle>
-                  ) : null}
-                </g>
-              );
-            })}
+                      {on && !reduce ? (
+                        <circle
+                          cx={center.x}
+                          cy={center.y}
+                          r={3}
+                          fill={planet.theme.primary}
+                          opacity={0.95}
+                        >
+                          <animate
+                            attributeName="cx"
+                            values={`${center.x};${x}`}
+                            dur={`${3.2 + (Math.abs(planet.orbit.angleDeg) % 50) / 25}s`}
+                            repeatCount="indefinite"
+                          />
+                          <animate
+                            attributeName="cy"
+                            values={`${center.y};${y}`}
+                            dur={`${3.2 + (Math.abs(planet.orbit.angleDeg) % 50) / 25}s`}
+                            repeatCount="indefinite"
+                          />
+                        </circle>
+                      ) : null}
+                    </g>
+                  );
+                })
+              : null}
 
-            {beamTarget ? (
+            {ready && beamTarget ? (
               <g filter="url(#link-glow-strong)">
                 <line
-                  x1="50%"
-                  y1="50%"
-                  x2={`${beamTarget.x}%`}
-                  y2={`${beamTarget.y}%`}
+                  x1={center.x}
+                  y1={center.y}
+                  x2={beamTarget.x}
+                  y2={beamTarget.y}
                   stroke="rgba(251,191,36,0.3)"
                   strokeWidth={6}
                   strokeLinecap="round"
                 />
                 <line
-                  x1="50%"
-                  y1="50%"
-                  x2={`${beamTarget.x}%`}
-                  y2={`${beamTarget.y}%`}
+                  x1={center.x}
+                  y1={center.y}
+                  x2={beamTarget.x}
+                  y2={beamTarget.y}
                   stroke="rgba(251,191,36,0.95)"
                   strokeWidth={2.5}
                   strokeLinecap="round"
@@ -406,17 +435,19 @@ export function GalaxyView() {
             </div>
           </div>
 
-          {layout.map(({ planet, x, y }, i) => (
+          {ready
+            ? nodes.map(({ planet, x, y }, i) => (
             <PlanetOrb
               key={planet.id}
               planet={planet}
-              left={`${x}%`}
-              top={`${y}%`}
+              left={`${x}px`}
+              top={`${y}px`}
               index={i}
               beamed={beamPlanetId === planet.id}
               onSelect={openPlanet}
             />
-          ))}
+              ))
+            : null}
         </div>
 
         <div className="mt-2 shrink-0 px-2">
