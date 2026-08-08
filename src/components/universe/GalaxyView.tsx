@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { ChevronRight, RotateCcw } from "lucide-react";
 import { PLANETS, getEnabledPlanets, type PlanetConfig } from "@/config/planets.config";
-import { SKILL_CONSTELLATION } from "@/config/alpha-skills.config";
 import { AlphaStar } from "@/components/universe/AlphaStar";
 import { AgentSatellites } from "@/components/universe/AgentSatellites";
 import { CommandBar } from "@/components/universe/CommandBar";
@@ -241,18 +240,6 @@ export function GalaxyView() {
     });
   }, []);
 
-  const byId = useMemo(() => {
-    const m = new Map<string, { x: number; y: number; enabled: boolean }>();
-    for (const row of layout) {
-      m.set(String(row.planet.id), {
-        x: row.x,
-        y: row.y,
-        enabled: row.planet.enabled,
-      });
-    }
-    return m;
-  }, [layout]);
-
   const beamTarget = useMemo(() => {
     if (!beamPlanetId) return null;
     return layout.find((l) => l.planet.id === beamPlanetId) ?? null;
@@ -393,61 +380,6 @@ export function GalaxyView() {
                   ) : null}
                 </g>
               ))}
-
-            {/* Skill constellation — soft curved tubes */}
-            {SKILL_CONSTELLATION.map(([a, b], i) => {
-              const A = byId.get(a);
-              const B = byId.get(b);
-              if (!A || !B) return null;
-              if (!A.enabled && !B.enabled) return null;
-              const midX = (A.x + B.x) / 2;
-              const midY = (A.y + B.y) / 2 - 3;
-              const d = `M ${A.x} ${A.y} Q ${midX} ${midY} ${B.x} ${B.y}`;
-              return (
-                <g key={`${a}-${b}`} filter="url(#link-glow)">
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke="rgba(148,163,184,0.16)"
-                    strokeWidth={0.9}
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke="rgba(203,213,225,0.65)"
-                    strokeWidth={0.28}
-                    strokeLinecap="round"
-                    strokeDasharray={reduce ? undefined : "0.6 2.2"}
-                  >
-                    {!reduce ? (
-                      <animate
-                        attributeName="stroke-dashoffset"
-                        values="0;-8"
-                        dur={`${5 + (i % 3)}s`}
-                        repeatCount="indefinite"
-                      />
-                    ) : null}
-                  </path>
-                  {!reduce ? (
-                    <circle r={0.38} fill="rgba(241,245,249,0.95)">
-                      <animate
-                        attributeName="cx"
-                        values={`${A.x};${midX};${B.x}`}
-                        dur={`${4 + (i % 4) * 0.45}s`}
-                        repeatCount="indefinite"
-                      />
-                      <animate
-                        attributeName="cy"
-                        values={`${A.y};${midY};${B.y}`}
-                        dur={`${4 + (i % 4) * 0.45}s`}
-                        repeatCount="indefinite"
-                      />
-                    </circle>
-                  ) : null}
-                </g>
-              );
-            })}
 
             {beamTarget ? (
               <g filter="url(#link-glow-strong)">
