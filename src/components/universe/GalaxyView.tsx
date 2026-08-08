@@ -280,8 +280,6 @@ export function GalaxyView() {
         >
           <svg
             className="pointer-events-none absolute inset-0 z-[4] h-full w-full overflow-visible"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
             aria-hidden
           >
             <defs>
@@ -292,7 +290,7 @@ export function GalaxyView() {
                 width="200%"
                 height="200%"
               >
-                <feGaussianBlur stdDeviation="0.35" result="blur" />
+                <feGaussianBlur stdDeviation="2" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
                   <feMergeNode in="SourceGraphic" />
@@ -305,7 +303,7 @@ export function GalaxyView() {
                 width="220%"
                 height="220%"
               >
-                <feGaussianBlur stdDeviation="0.55" result="blur" />
+                <feGaussianBlur stdDeviation="3.2" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
                   <feMergeNode in="SourceGraphic" />
@@ -313,44 +311,52 @@ export function GalaxyView() {
               </filter>
             </defs>
 
-            {/* Star → planet spokes for EVERY planet (bright = live, faint = soon) */}
+            {/* Star → planet spokes for EVERY planet (bright = live, faint = soon).
+                Percentage coords map 1:1 to the orbs' left/top %, so lines always
+                terminate exactly at each planet regardless of container aspect. */}
             {layout.map(({ planet, x, y }) => {
               const on = planet.enabled;
               return (
                 <g key={`spoke-${planet.id}`} filter="url(#link-glow)">
                   {/* halo */}
                   <line
-                    x1={50}
-                    y1={50}
-                    x2={x}
-                    y2={y}
+                    x1="50%"
+                    y1="50%"
+                    x2={`${x}%`}
+                    y2={`${y}%`}
                     stroke={planet.theme.primary}
                     strokeOpacity={on ? 0.22 : 0.08}
-                    strokeWidth={on ? 0.9 : 0.6}
+                    strokeWidth={on ? 5 : 3}
                     strokeLinecap="round"
                   />
                   {/* core */}
                   <line
-                    x1={50}
-                    y1={50}
-                    x2={x}
-                    y2={y}
+                    x1="50%"
+                    y1="50%"
+                    x2={`${x}%`}
+                    y2={`${y}%`}
                     stroke={planet.theme.primary}
                     strokeOpacity={on ? 0.8 : 0.28}
-                    strokeWidth={on ? 0.34 : 0.2}
+                    strokeWidth={on ? 2 : 1.2}
                     strokeLinecap="round"
                   />
                   {on && !reduce ? (
-                    <circle r={0.45} fill={planet.theme.primary} opacity={0.95}>
+                    <circle
+                      cx="50%"
+                      cy="50%"
+                      r={3}
+                      fill={planet.theme.primary}
+                      opacity={0.95}
+                    >
                       <animate
                         attributeName="cx"
-                        values={`50;${x}`}
+                        values={`50%;${x}%`}
                         dur={`${3.2 + (Math.abs(planet.orbit.angleDeg) % 50) / 25}s`}
                         repeatCount="indefinite"
                       />
                       <animate
                         attributeName="cy"
-                        values={`50;${y}`}
+                        values={`50%;${y}%`}
                         dur={`${3.2 + (Math.abs(planet.orbit.angleDeg) % 50) / 25}s`}
                         repeatCount="indefinite"
                       />
@@ -363,21 +369,21 @@ export function GalaxyView() {
             {beamTarget ? (
               <g filter="url(#link-glow-strong)">
                 <line
-                  x1={50}
-                  y1={50}
-                  x2={beamTarget.x}
-                  y2={beamTarget.y}
+                  x1="50%"
+                  y1="50%"
+                  x2={`${beamTarget.x}%`}
+                  y2={`${beamTarget.y}%`}
                   stroke="rgba(251,191,36,0.3)"
-                  strokeWidth={1.1}
+                  strokeWidth={6}
                   strokeLinecap="round"
                 />
                 <line
-                  x1={50}
-                  y1={50}
-                  x2={beamTarget.x}
-                  y2={beamTarget.y}
+                  x1="50%"
+                  y1="50%"
+                  x2={`${beamTarget.x}%`}
+                  y2={`${beamTarget.y}%`}
                   stroke="rgba(251,191,36,0.95)"
-                  strokeWidth={0.45}
+                  strokeWidth={2.5}
                   strokeLinecap="round"
                 >
                   {!reduce ? (
